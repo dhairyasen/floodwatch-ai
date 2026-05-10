@@ -156,7 +156,7 @@ analyzeBtn.addEventListener('click', async () => {
     setTimeout(() => updateProgress(80, 'Computing metrics...'), 4500);
     
     try {
-        const response = await fetch('http://localhost:8000/analyze', {
+        const response = await fetch('/analyze', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
