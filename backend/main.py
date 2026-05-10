@@ -1,6 +1,5 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel
 from typing import Optional
@@ -11,7 +10,7 @@ import ee
 # Initialize FastAPI app
 app = FastAPI(title="FloodWatch AI", version="1.0.0")
 
-# CORS middleware - allow all origins
+# CORS middleware
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -29,17 +28,23 @@ frontend_dir = os.path.join(project_dir, 'frontend')
 # Create outputs directory if not exists
 os.makedirs(outputs_dir, exist_ok=True)
 
-# Initialize Earth Engine with Service Account
+# Initialize Earth Engine
 def init_gee():
     try:
-        # Try service account first (for deployment)
         service_account_key = os.environ.get('GEE_SERVICE_ACCOUNT_KEY')
         if service_account_key:
-            import json as json_lib
-            key_data = json_lib.loads(service_account_key)
+            # Parse JSON string to dict
+            if isinstance(service_account_key, str):
+                key_data = json.loads(service_account_key)
+            else:
+                key_data = service_account_key
+            
+            # Convert back to JSON string for ServiceAccountCredentials
+            key_json_str = json.dumps(key_data)
+            
             credentials = ee.ServiceAccountCredentials(
                 key_data['client_email'],
-                key_data=key_data
+                key_data=key_json_str
             )
             ee.Initialize(credentials, project='flood-analysis-478517')
             print("✓ GEE initialized with service account!")
@@ -94,7 +99,6 @@ async def serve_output(filename: str):
 async def health():
     return {"status": "ok", "message": "FloodWatch AI is running"}
 
-# Serve frontend static files
 @app.get("/styles.css")
 async def styles():
     return FileResponse(os.path.join(frontend_dir, 'styles.css'))
