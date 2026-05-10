@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FloodWatch AI - Advanced Flood Detection</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="water-background">
+        <div class="wave wave-1"></div>
+        <div class="wave wave-2"></div>
+        <div class="wave wave-3"></div>
+    </div>
+
+    <div class="api-status status-connected">
+        <span class="status-pulse"></span>
+        API Connected
+    </div>
+
+    <div class="container">
+        <!-- Hero Section -->
+        <section class="hero-section">
+            <div class="hero-content">
+                <div class="logo-container">
+                    <div class="logo-icon">
+                        <i class="fas fa-water"></i>
+                        <div class="ripple-effect"></div>
+                    </div>
+                    <div class="logo-text">
+                        <h1>FloodWatch <span class="ai-text">AI</span></h1>
+                        <p class="tagline">Advanced flood detection using satellite imagery and AI</p>
+                    </div>
+                </div>
+                <div class="hero-stats">
+                    <div class="stat-item">
+                        <div class="stat-icon">📍</div>
+                        <div class="stat-info">
+                            <div class="stat-number">50+</div>
+                            <div class="stat-label">Cities Monitored</div>
+                        </div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-icon">🛰️</div>
+                        <div class="stat-info">
+                            <div class="stat-number">10m</div>
+                            <div class="stat-label">Satellite Resolution</div>
+                        </div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-icon">🎯</div>
+                        <div class="stat-info">
+                            <div class="stat-number">~90%</div>
+                            <div class="stat-label">Detection Accuracy</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Analysis Card -->
+        <div class="card analysis-card">
+            <div class="card-header">
+                <div class="card-title">
+                    <i class="fas fa-chart-line"></i>
+                    <h2>Flood Risk Analysis</h2>
+                </div>
+                <div class="card-badge">
+                    <i class="fas fa-robot"></i>
+                    AI-Powered
+                </div>
+            </div>
+
+            <!-- Quick Cities -->
+            <div class="quick-cities">
+                <div class="section-label">
+                    <i class="fas fa-bolt"></i>
+                    Quick Select Cities
+                </div>
+                <div class="cities-grid">
+                    <button class="city-btn" onclick="selectCity('Mumbai')">
+                        <i class="fas fa-map-marker-alt"></i>
+                        Mumbai
+                    </button>
+                    <button class="city-btn" onclick="selectCity('Delhi')">
+                        <i class="fas fa-map-marker-alt"></i>
+                        Delhi
+                    </button>
+                    <button class="city-btn" onclick="selectCity('Chennai')">
+                        <i class="fas fa-map-marker-alt"></i>
+                        Chennai
+                    </button>
+                    <button class="city-btn" onclick="selectCity('Kolkata')">
+                        <i class="fas fa-map-marker-alt"></i>
+                        Kolkata
+                    </button>
+                    <button class="city-btn" onclick="selectCity('Bangalore')">
+                        <i class="fas fa-map-marker-alt"></i>
+                        Bangalore
+                    </button>
+                    <button class="city-btn" onclick="selectCity('Hyderabad')">
+                        <i class="fas fa-map-marker-alt"></i>
+                        Hyderabad
+                    </button>
+                </div>
+            </div>
+
+            <!-- Info Box -->
+            <div class="info-box">
+                <i class="fas fa-info-circle info-icon"></i>
+                <div class="info-content">
+                    <h4>Analysis Coverage</h4>
+                    <p>Enter any Indian city name or coordinates. Our AI analyzes Sentinel-2 satellite imagery to detect flood patterns and assess risk levels.</p>
+                </div>
+            </div>
+
+            <!-- Analysis Form -->
+            <form class="analysis-form" id="analysisForm" onsubmit="return false">
+                <!-- Location Search -->
+                <div class="section-label">
+                    <i class="fas fa-search-location"></i>
+                    Location Search
+                </div>
+                <div class="form-group">
+                    <label><i class="fas fa-map-pin"></i> Location</label>
+                    <div class="input-with-icon">
+                        <i class="fas fa-location-dot"></i>
+                        <input type="text" id="location" placeholder="Enter city name (e.g., Mumbai)" required>
+                    </div>
+                </div>
+
+                <!-- Before Period -->
+                <div class="section-label" style="margin-top: 30px;">
+                    <i class="fas fa-calendar-minus"></i>
+                    Before Period (Baseline)
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label><i class="fas fa-calendar-day"></i> Before Start Date</label>
+                        <div class="input-with-icon">
+                            <i class="fas fa-calendar"></i>
+                            <input type="date" id="beforeStartDate" required>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label><i class="fas fa-calendar-day"></i> Before End Date</label>
+                        <div class="input-with-icon">
+                            <i class="fas fa-calendar"></i>
+                            <input type="date" id="beforeEndDate" required>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- After Period -->
+                <div class="section-label" style="margin-top: 20px;">
+                    <i class="fas fa-calendar-plus"></i>
+                    After Period (Current)
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label><i class="fas fa-calendar-day"></i> After Start Date</label>
+                        <div class="input-with-icon">
+                            <i class="fas fa-calendar"></i>
+                            <input type="date" id="afterStartDate" required>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label><i class="fas fa-calendar-day"></i> After End Date</label>
+                        <div class="input-with-icon">
+                            <i class="fas fa-calendar"></i>
+                            <input type="date" id="afterEndDate" required>
+                        </div>
+                    </div>
+                </div>
+
+                <button type="button" class="analyze-btn" id="analyzeBtn">
+                    <div class="btn-content">
+                        <i class="fas fa-satellite"></i>
+                        <span>Launch Flood Analysis</span>
+                    </div>
+                    <i class="fas fa-arrow-right btn-arrow"></i>
+                </button>
+            </form>
+        </div>
+
+        <!-- Loading State -->
+        <div class="loading" id="loading">
+            <div class="satellite-loader">
+                <i class="fas fa-satellite"></i>
+                <div class="orbit"></div>
+            </div>
+            <h3>Analyzing Satellite Data...</h3>
+            <p>Processing high-resolution imagery and computing flood metrics</p>
+            <div class="progress-container">
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progressBar"></div>
+                </div>
+                <div class="progress-text" id="progressText">Initializing...</div>
+            </div>
+            <div class="loading-stats">
+                <div class="loading-stat">
+                    <i class="fas fa-cloud"></i>
+                    <span>Fetching satellite images</span>
+                </div>
+                <div class="loading-stat">
+                    <i class="fas fa-brain"></i>
+                    <span>AI processing data</span>
+                </div>
+                <div class="loading-stat">
+                    <i class="fas fa-chart-area"></i>
+                    <span>Computing metrics</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Error Display -->
+        <div class="error" id="error">
+            <i class="fas fa-exclamation-triangle error-icon"></i>
+            <div class="error-content">
+                <h4>Analysis Error</h4>
+                <p id="errorMessage"></p>
+            </div>
+            <button class="error-close" onclick="document.getElementById('error').style.display='none'">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+
+        <!-- Results Card -->
+        <div class="card results-card" id="results" style="display: none;">
+            <div class="results-header">
+                <div class="location-info">
+                    <div class="location-icon">
+                        <i class="fas fa-map-marker-alt"></i>
+                    </div>
+                    <div class="location-details">
+                        <h2 id="resultLocation">Mumbai, India</h2>
+                        <p id="resultPeriod">Analysis Period: July 2024</p>
+                    </div>
+                </div>
+                <button class="analyze-btn" style="width: auto; padding: 12px 24px;" onclick="location.reload()">
+                    <i class="fas fa-redo"></i>
+                    New Analysis
+                </button>
+            </div>
+
+            <!-- Results Content -->
+            <div class="results-content">
+                <h3><i class="fas fa-chart-bar"></i> Analysis Results</h3>
+                <div id="resultsDisplay"></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>

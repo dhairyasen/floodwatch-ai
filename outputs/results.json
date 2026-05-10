@@ -1,0 +1,17 @@
+{
+  "location": "Indore, Madhya Pradesh, India",
+  "location_name": "Indore, Madhya Pradesh, India",
+  "coordinates": {
+    "lat": 22.7108119,
+    "lon": 75.8076918
+  },
+  "start_date": "2026-02-21",
+  "end_date": "2026-03-31",
+  "study_area": 10000.0,
+  "water_before": 26.31,
+  "water_after": 8.56,
+  "new_flooded_area": 0.0,
+  "water_coverage_change": 0.0,
+  "image_count": 59,
+  "timestamp": "2026-05-08T12:01:25.215636"
+}
