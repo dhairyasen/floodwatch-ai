@@ -242,3 +242,161 @@ function displayResults(data) {
     resultsCard.style.display = 'block';
     resultsCard.scrollIntoView({ behavior: 'smooth' });
 }
+/* ============================================================
+   Phase 2 — Alarm banner display
+   ============================================================ */
+const ALARM_COLORS = {
+    NONE:     '#10b981',
+    LOW:      '#f59e0b',
+    MEDIUM:   '#f97316',
+    HIGH:     '#ef4444',
+    CRITICAL: '#dc2626',
+};
+
+function showAlarmBanner(alarm) {
+    if (!alarm || !alarm.severity) return;
+
+    const banner = document.getElementById('alarmBanner');
+    const icon   = document.getElementById('alarmIcon');
+    const title  = document.getElementById('alarmTitle');
+    const msg    = document.getElementById('alarmMsg');
+    const color  = ALARM_COLORS[alarm.severity] || '#64748b';
+
+    icon.textContent  = alarm.severity_icon || '⚠️';
+    title.textContent = `Flood Severity: ${alarm.severity}`;
+    title.style.color = color;
+    msg.textContent   = alarm.message || '';
+
+    banner.style.borderLeft = `4px solid ${color}`;
+    banner.style.display = 'flex';
+
+    // Auto-dismiss NONE/LOW after 6s
+    if (alarm.severity === 'NONE' || alarm.severity === 'LOW') {
+        setTimeout(() => { banner.style.display = 'none'; }, 6000);
+    }
+}
+
+/* ============================================================
+   Phase 2 — Patch displayResults to show alarm
+   ============================================================ */
+const _origDisplayResults = displayResults;
+function displayResults(data) {
+    _origDisplayResults(data);
+    if (data.alarm) {
+        showAlarmBanner(data.alarm);
+        loadAlarmHistory();   // refresh history list after new analysis
+    }
+}
+
+/* ============================================================
+   Phase 2 — Subscription handlers
+   ============================================================ */
+async function handleSubscribe() {
+    const email  = document.getElementById('subEmail').value.trim();
+    const name   = document.getElementById('subName').value.trim();
+    const cities = document.getElementById('subCities').value
+        .split(',').map(c => c.trim()).filter(Boolean);
+    const status = document.getElementById('subscribeStatus');
+
+    if (!email) {
+        showSubscribeStatus('Please enter a valid email address.', 'error');
+        return;
+    }
+
+    const btn = document.getElementById('subscribeBtn');
+    btn.disabled = true;
+    btn.querySelector('span').textContent = 'Subscribing...';
+
+    try {
+        const res = await fetch('/subscribe', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, name, cities }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || 'Subscription failed');
+        const verb = data.status === 'updated' ? 'updated' : 'confirmed';
+        showSubscribeStatus(`✅ Subscription ${verb} for ${email}. Weekly reports will arrive every Monday.`, 'success');
+    } catch (err) {
+        showSubscribeStatus(`❌ ${err.message}`, 'error');
+    } finally {
+        btn.disabled = false;
+        btn.querySelector('span').textContent = 'Subscribe to Weekly Reports';
+    }
+}
+
+async function handleUnsubscribe() {
+    const email = document.getElementById('subEmail').value.trim();
+    if (!email) {
+        showSubscribeStatus('Enter your email first to unsubscribe.', 'error');
+        return;
+    }
+    try {
+        const res = await fetch('/unsubscribe', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email }),
+        });
+        const data = await res.json();
+        showSubscribeStatus(`✅ ${email} has been unsubscribed successfully.`, 'success');
+    } catch (err) {
+        showSubscribeStatus(`❌ ${err.message}`, 'error');
+    }
+}
+
+function showSubscribeStatus(msg, type) {
+    const el = document.getElementById('subscribeStatus');
+    el.textContent = msg;
+    el.className = `subscribe-status ${type}`;
+    el.style.display = 'block';
+    setTimeout(() => { el.style.display = 'none'; }, 8000);
+}
+
+/* ============================================================
+   Phase 2 — Alarm history list
+   ============================================================ */
+async function loadAlarmHistory() {
+    const container = document.getElementById('alarmHistoryList');
+    const btn = document.getElementById('loadMoreBtn');
+    try {
+        const res = await fetch('/alarms/history?limit=10');
+        const data = await res.json();
+
+        if (!Array.isArray(data) || data.length === 0) {
+            container.innerHTML = `
+                <p style="color:var(--gray); font-size:13px; margin-top:8px; font-style:italic;">
+                    No alarm history yet. Run an analysis to generate your first alarm record.
+                </p>`;
+            btn.style.display = 'none';
+            return;
+        }
+
+        container.innerHTML = data.map(a => {
+            const color = ALARM_COLORS[a.severity] || '#64748b';
+            const ts = (a.timestamp || '').slice(0, 16).replace('T', ' ');
+            const flood = (a.metrics?.new_flooded_area_km2 ?? 0).toFixed(2);
+            return `
+            <div class="alarm-history-item">
+                <div class="ah-icon">${a.severity_icon || '⚠️'}</div>
+                <div class="ah-body">
+                    <div class="ah-location">${a.location_name || 'Unknown'}</div>
+                    <div class="ah-time">${ts}</div>
+                </div>
+                <span class="ah-severity"
+                      style="background:${color}22; color:${color}; border:1px solid ${color}40;">
+                    ${a.severity}
+                </span>
+                <div class="ah-flood">${flood} km²</div>
+            </div>`;
+        }).join('');
+
+        btn.style.display = 'block';
+
+    } catch (err) {
+        container.innerHTML = `<p style="color:var(--gray); font-size:13px;">Could not load history (server may be offline).</p>`;
+        btn.style.display = 'none';
+    }
+}
+
+// Load on page init
+loadAlarmHistory();

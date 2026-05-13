@@ -253,6 +253,99 @@
         </div>
     </div>
 
+    <!-- ============================================================ -->
+    <!-- Phase 2 — Alarm Banner (shown after analysis) -->
+    <!-- ============================================================ -->
+    <div class="alarm-banner" id="alarmBanner" style="display:none;">
+        <div class="alarm-icon" id="alarmIcon"></div>
+        <div class="alarm-body">
+            <div class="alarm-title" id="alarmTitle"></div>
+            <div class="alarm-msg" id="alarmMsg"></div>
+        </div>
+        <button class="alarm-close" onclick="document.getElementById('alarmBanner').style.display='none'">
+            <i class="fas fa-times"></i>
+        </button>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- Phase 2 — Email Subscription Card -->
+    <!-- ============================================================ -->
+    <div class="card subscribe-card" id="subscribeSection">
+        <div class="card-header">
+            <div class="card-title">
+                <i class="fas fa-bell"></i>
+                <h2>Flood Alert Subscription</h2>
+            </div>
+            <div class="card-badge">
+                <i class="fas fa-envelope"></i>
+                Weekly Reports
+            </div>
+        </div>
+
+        <p class="subscribe-desc">
+            Get a weekly flood monitoring digest delivered to your inbox every Monday.
+            Stay informed about flood events across Indian cities.
+        </p>
+
+        <div class="subscribe-form" id="subscribeForm">
+            <div class="form-row">
+                <div class="form-group">
+                    <label><i class="fas fa-user"></i> Your Name</label>
+                    <div class="input-with-icon">
+                        <i class="fas fa-user-circle"></i>
+                        <input type="text" id="subName" placeholder="e.g. Ravi Sharma">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label><i class="fas fa-envelope"></i> Email Address</label>
+                    <div class="input-with-icon">
+                        <i class="fas fa-at"></i>
+                        <input type="email" id="subEmail" placeholder="your@email.com" required>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-group" style="margin-top:8px;">
+                <label><i class="fas fa-map-marker-alt"></i> Cities to Monitor (optional)</label>
+                <div class="input-with-icon">
+                    <i class="fas fa-city"></i>
+                    <input type="text" id="subCities" placeholder="e.g. Mumbai, Chennai, Delhi">
+                </div>
+                <span class="field-hint">Comma-separated city names</span>
+            </div>
+
+            <div class="subscribe-actions">
+                <button class="analyze-btn subscribe-btn" id="subscribeBtn" onclick="handleSubscribe()">
+                    <div class="btn-content">
+                        <i class="fas fa-bell"></i>
+                        <span>Subscribe to Weekly Reports</span>
+                    </div>
+                </button>
+                <button class="unsub-btn" id="unsubBtn" onclick="handleUnsubscribe()">
+                    <i class="fas fa-bell-slash"></i> Unsubscribe
+                </button>
+            </div>
+
+            <div class="subscribe-status" id="subscribeStatus" style="display:none;"></div>
+        </div>
+
+        <!-- Latest alarm history preview -->
+        <div class="alarm-history-section">
+            <div class="section-label" style="margin-top:24px;">
+                <i class="fas fa-history"></i>
+                Recent Alarm History
+            </div>
+            <div id="alarmHistoryList">
+                <p style="color:var(--gray); font-size:13px; margin-top:8px;">
+                    Loading alarm history...
+                </p>
+            </div>
+            <button class="load-more-btn" id="loadMoreBtn" onclick="loadAlarmHistory()" style="display:none;">
+                <i class="fas fa-sync-alt"></i> Refresh
+            </button>
+        </div>
+    </div>
+
     <script src="script.js"></script>
 </body>
 </html>
