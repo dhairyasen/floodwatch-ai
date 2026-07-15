@@ -258,7 +258,7 @@ class WeeklyReporter:
         sent = []
         failed = []
         try:
-            with smtplib.SMTP_SSL('smtp.gmail.com', 465) as server:
+            with smtplib.SMTP_SSL('smtp.gmail.com', 465, timeout=10.0) as server:
                 server.login(self.sender_email, self.sender_password)
                 
                 if subscribers:
@@ -400,7 +400,7 @@ class WeeklyReporter:
 </html>"""
 
         try:
-            with smtplib.SMTP_SSL('smtp.gmail.com', 465) as server:
+            with smtplib.SMTP_SSL('smtp.gmail.com', 465, timeout=10.0) as server:
                 server.login(self.sender_email, self.sender_password)
                 msg = MIMEMultipart('alternative')
                 msg['Subject'] = subject
@@ -451,7 +451,7 @@ class WeeklyReporter:
         )
 
         try:
-            with smtplib.SMTP_SSL('smtp.gmail.com', 465) as server:
+            with smtplib.SMTP_SSL('smtp.gmail.com', 465, timeout=10.0) as server:
                 server.login(self.sender_email, self.sender_password)
                 msg = MIMEMultipart('alternative')
                 msg['Subject'] = subject
