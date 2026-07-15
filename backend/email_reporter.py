@@ -244,6 +244,53 @@ class WeeklyReporter:
             logger.warning("No recipients configured for weekly report.")
             return {'status': 'skipped', 'reason': 'no recipients', 'events': len(week_alarms)}
 
+        # Intercept for Gmail API (highest priority)
+        if os.environ.get('GMAIL_REFRESH_TOKEN'):
+            sent = []
+            failed = []
+            if subscribers:
+                for sub in subscribers:
+                    addr = sub['email']
+                    cities = sub.get('cities', [])
+                    
+                    if cities and "all" not in [c.lower() for c in cities]:
+                        user_alarms = [
+                            a for a in week_alarms
+                            if any(c.lower() in a.get('location_name', '').lower() for c in cities)
+                        ]
+                    else:
+                        user_alarms = week_alarms
+                        
+                    html_body = build_html_report(user_alarms, ws_str, we_str)
+                    subject = (
+                        f"🌊 FloodWatch AI — Weekly Report ({ws_str} to {we_str}) "
+                        f"| {len(user_alarms)} event{'s' if len(user_alarms) != 1 else ''}"
+                    )
+                    res = self._send_email_via_gmail_api(addr, subject, html_body)
+                    if res.get('status') == 'sent':
+                        sent.append(addr)
+                    else:
+                        failed.append({'email': addr, 'error': res.get('error', 'Unknown Gmail API error')})
+            else:
+                html_body = build_html_report(week_alarms, ws_str, we_str)
+                subject = (
+                    f"🌊 FloodWatch AI — Weekly Report ({ws_str} to {we_str}) "
+                    f"| {len(week_alarms)} event{'s' if len(week_alarms) != 1 else ''}"
+                )
+                for addr in self.fallback_recipients:
+                    res = self._send_email_via_gmail_api(addr, subject, html_body)
+                    if res.get('status') == 'sent':
+                        sent.append(addr)
+                    else:
+                        failed.append({'email': addr, 'error': res.get('error', 'Unknown Gmail API error')})
+            return {
+                'status': 'sent',
+                'sent_to': sent,
+                'failed': failed,
+                'events_included': len(week_alarms),
+                'period': f'{ws_str} to {we_str}',
+            }
+
         # Intercept for Brevo API
         if os.environ.get('BREVO_API_KEY'):
             sent = []
@@ -490,6 +537,10 @@ class WeeklyReporter:
 </body>
 </html>"""
 
+        # Intercept for Gmail API (highest priority — sends via Google's own servers)
+        if os.environ.get('GMAIL_REFRESH_TOKEN'):
+            return self._send_email_via_gmail_api(email, subject, html)
+
         # Intercept for Brevo API
         if os.environ.get('BREVO_API_KEY'):
             return self._send_email_via_brevo(email, subject, html)
@@ -548,6 +599,10 @@ class WeeklyReporter:
             f"🌊 FloodWatch AI — Initial Flood Report ({ws_str} to {we_str}) "
             f"| {len(user_alarms)} event{'s' if len(user_alarms) != 1 else ''}"
         )
+
+        # Intercept for Gmail API (highest priority — sends via Google's own servers)
+        if os.environ.get('GMAIL_REFRESH_TOKEN'):
+            return self._send_email_via_gmail_api(email, subject, html_body)
 
         # Intercept for Brevo API
         if os.environ.get('BREVO_API_KEY'):
@@ -650,4 +705,73 @@ class WeeklyReporter:
                 return {'status': 'error', 'error': f"Brevo API returned {response.status_code}: {response.text}"}
         except Exception as e:
             logger.error(f"Failed to send email via Brevo API to {to_email}: {e}")
+            return {'status': 'error', 'error': str(e)}
+
+    def _send_email_via_gmail_api(self, to_email: str, subject: str, html_body: str) -> dict:
+        """Send email via Gmail REST API using OAuth2 refresh token.
+        Sends directly through Google's servers — no SMTP, no DMARC issues, no rate limits.
+        Required env vars: GMAIL_CLIENT_ID, GMAIL_CLIENT_SECRET, GMAIL_REFRESH_TOKEN, EMAIL_SENDER
+        """
+        import base64
+        from email.mime.multipart import MIMEMultipart
+        from email.mime.text import MIMEText
+
+        client_id     = os.environ.get('GMAIL_CLIENT_ID')
+        client_secret = os.environ.get('GMAIL_CLIENT_SECRET')
+        refresh_token = os.environ.get('GMAIL_REFRESH_TOKEN')
+        sender_email  = os.environ.get('EMAIL_SENDER', 'dhairyasen7@gmail.com')
+
+        if not all([client_id, client_secret, refresh_token]):
+            return {'status': 'skipped', 'reason': 'Gmail API credentials not configured'}
+
+        # Step 1: Get a fresh access token using the refresh token
+        try:
+            token_response = requests.post(
+                'https://oauth2.googleapis.com/token',
+                data={
+                    'client_id':     client_id,
+                    'client_secret': client_secret,
+                    'refresh_token': refresh_token,
+                    'grant_type':    'refresh_token',
+                },
+                timeout=10.0
+            )
+            token_data = token_response.json()
+            access_token = token_data.get('access_token')
+            if not access_token:
+                logger.error(f"Gmail API token refresh failed: {token_data}")
+                return {'status': 'error', 'error': f"Token refresh failed: {token_data}"}
+        except Exception as e:
+            logger.error(f"Gmail API token refresh exception: {e}")
+            return {'status': 'error', 'error': str(e)}
+
+        # Step 2: Build the RFC 2822 email message
+        msg = MIMEMultipart('alternative')
+        msg['Subject'] = subject
+        msg['From']    = f"FloodWatch AI <{sender_email}>"
+        msg['To']      = to_email
+        msg.attach(MIMEText(html_body, 'html'))
+
+        # Step 3: Base64url-encode the raw message (Gmail API requirement)
+        raw_message = base64.urlsafe_b64encode(msg.as_bytes()).decode('utf-8')
+
+        # Step 4: Send via Gmail API
+        try:
+            send_response = requests.post(
+                f'https://gmail.googleapis.com/gmail/v1/users/{sender_email}/messages/send',
+                headers={
+                    'Authorization': f'Bearer {access_token}',
+                    'Content-Type':  'application/json',
+                },
+                json={'raw': raw_message},
+                timeout=15.0
+            )
+            if send_response.status_code in (200, 201):
+                logger.info(f"Email sent successfully via Gmail API to {to_email}")
+                return {'status': 'sent', 'email': to_email}
+            else:
+                logger.error(f"Gmail API send error: {send_response.text}")
+                return {'status': 'error', 'error': f"Gmail API returned {send_response.status_code}: {send_response.text}"}
+        except Exception as e:
+            logger.error(f"Gmail API send exception to {to_email}: {e}")
             return {'status': 'error', 'error': str(e)}

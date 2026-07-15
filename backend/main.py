@@ -272,6 +272,7 @@ async def debug_email(email: str):
         "sender_email": reporter.sender_email,
         "resend_api_configured": bool(os.environ.get('RESEND_API_KEY')),
         "brevo_api_configured": bool(os.environ.get('BREVO_API_KEY')),
+        "gmail_api_configured": bool(os.environ.get('GMAIL_REFRESH_TOKEN')),
         "welcome_status": welcome_res,
         "report_status": report_res
     })
