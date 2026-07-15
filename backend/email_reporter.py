@@ -12,6 +12,7 @@ import os
 import json
 import smtplib
 import logging
+import requests
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from datetime import datetime, timedelta
@@ -243,6 +244,53 @@ class WeeklyReporter:
             logger.warning("No recipients configured for weekly report.")
             return {'status': 'skipped', 'reason': 'no recipients', 'events': len(week_alarms)}
 
+        # Intercept for Resend API
+        if os.environ.get('RESEND_API_KEY'):
+            sent = []
+            failed = []
+            if subscribers:
+                for sub in subscribers:
+                    addr = sub['email']
+                    cities = sub.get('cities', [])
+                    
+                    if cities and "all" not in [c.lower() for c in cities]:
+                        user_alarms = [
+                            a for a in week_alarms
+                            if any(c.lower() in a.get('location_name', '').lower() for c in cities)
+                        ]
+                    else:
+                        user_alarms = week_alarms
+                        
+                    html_body = build_html_report(user_alarms, ws_str, we_str)
+                    subject = (
+                        f"🌊 FloodWatch AI — Weekly Report ({ws_str} to {we_str}) "
+                        f"| {len(user_alarms)} event{'s' if len(user_alarms) != 1 else ''}"
+                    )
+                    res = self._send_email_via_resend(addr, subject, html_body)
+                    if res.get('status') == 'sent':
+                        sent.append(addr)
+                    else:
+                        failed.append({'email': addr, 'error': res.get('error', 'Unknown Resend error')})
+            else:
+                html_body = build_html_report(week_alarms, ws_str, we_str)
+                subject = (
+                    f"🌊 FloodWatch AI — Weekly Report ({ws_str} to {we_str}) "
+                    f"| {len(week_alarms)} event{'s' if len(week_alarms) != 1 else ''}"
+                )
+                for addr in self.fallback_recipients:
+                    res = self._send_email_via_resend(addr, subject, html_body)
+                    if res.get('status') == 'sent':
+                        sent.append(addr)
+                    else:
+                        failed.append({'email': addr, 'error': res.get('error', 'Unknown Resend error')})
+            return {
+                'status': 'sent',
+                'sent_to': sent,
+                'failed': failed,
+                'events_included': len(week_alarms),
+                'period': f'{ws_str} to {we_str}',
+            }
+
         if not self.sender_email or not self.sender_password:
             logger.warning("EMAIL_SENDER / EMAIL_PASSWORD not set; skipping actual send.")
             html_body = build_html_report(week_alarms, ws_str, we_str)
@@ -399,6 +447,10 @@ class WeeklyReporter:
 </body>
 </html>"""
 
+        # Intercept for Resend API
+        if os.environ.get('RESEND_API_KEY'):
+            return self._send_email_via_resend(email, subject, html)
+
         try:
             with smtplib.SMTP_SSL('smtp.gmail.com', 465, timeout=10.0) as server:
                 server.login(self.sender_email, self.sender_password)
@@ -419,10 +471,6 @@ class WeeklyReporter:
         Build and send a weekly-format report containing the last 7 days of alarms
         specifically filtered for the given cities to a single email address.
         """
-        if not self.sender_email or not self.sender_password:
-            logger.warning("EMAIL_SENDER / EMAIL_PASSWORD not set; skipping personalized report.")
-            return {'status': 'skipped', 'reason': 'email credentials not configured'}
-
         week_end = datetime.now()
         week_start = week_end - timedelta(days=7)
         ws_str = week_start.strftime('%d %b %Y')
@@ -450,6 +498,14 @@ class WeeklyReporter:
             f"| {len(user_alarms)} event{'s' if len(user_alarms) != 1 else ''}"
         )
 
+        # Intercept for Resend API
+        if os.environ.get('RESEND_API_KEY'):
+            return self._send_email_via_resend(email, subject, html_body)
+
+        if not self.sender_email or not self.sender_password:
+            logger.warning("EMAIL_SENDER / EMAIL_PASSWORD not set; skipping personalized report.")
+            return {'status': 'skipped', 'reason': 'email credentials not configured'}
+
         try:
             with smtplib.SMTP_SSL('smtp.gmail.com', 465, timeout=10.0) as server:
                 server.login(self.sender_email, self.sender_password)
@@ -463,4 +519,38 @@ class WeeklyReporter:
                 return {'status': 'sent', 'email': email, 'events': len(user_alarms)}
         except Exception as e:
             logger.error(f"Failed to send personalized report to {email}: {e}")
+            return {'status': 'error', 'error': str(e)}
+
+    def _send_email_via_resend(self, to_email: str, subject: str, html_body: str) -> dict:
+        """Send email via Resend's HTTPS REST API to bypass SMTP port blocks on Render."""
+        api_key = os.environ.get('RESEND_API_KEY')
+        if not api_key:
+            return {'status': 'skipped', 'reason': 'no resend api key'}
+            
+        sender = os.environ.get('EMAIL_SENDER', 'onboarding@resend.dev')
+        if not sender or '@' not in sender:
+            sender = 'onboarding@resend.dev'
+            
+        url = "https://api.resend.com/emails"
+        headers = {
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json"
+        }
+        data = {
+            "from": f"FloodWatch AI <{sender}>",
+            "to": to_email,
+            "subject": subject,
+            "html": html_body
+        }
+        
+        try:
+            response = requests.post(url, headers=headers, json=data, timeout=10.0)
+            if response.status_code in (200, 201):
+                logger.info(f"Email sent successfully via Resend API to {to_email}")
+                return {'status': 'sent', 'email': to_email}
+            else:
+                logger.error(f"Resend API error: {response.text}")
+                return {'status': 'error', 'error': f"Resend API returned {response.status_code}: {response.text}"}
+        except Exception as e:
+            logger.error(f"Failed to send email via Resend API to {to_email}: {e}")
             return {'status': 'error', 'error': str(e)}
