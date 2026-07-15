@@ -40,16 +40,18 @@ def build_html_report(alarm_history: list, week_start: str, week_end: str) -> st
     worst_color = ALARM_COLORS.get(worst, '#64748b')
     worst_icon = ALARM_ICONS.get(worst, '✅')
 
-    # Build alarm rows
-    rows_html = ''
+    # Build alarm rows or safety banner
     if not alarm_history:
-        rows_html = '''
-        <tr>
-            <td colspan="5" style="text-align:center; padding:24px; color:#64748b; font-style:italic;">
-                No flood events recorded this week.
-            </td>
-        </tr>'''
+        events_block = '''
+      <div style="background:#f0fdf4; border:1px solid #bbf7d0; border-radius:12px; padding:24px; text-align:center;">
+        <div style="font-size:32px; margin-bottom:8px;">🛡️</div>
+        <h3 style="margin:0 0 6px; color:#166534; font-size:16px; font-weight:700;">All Monitored Locations are Stable</h3>
+        <p style="margin:0; font-size:13px; color:#16a34a; line-height:1.5;">
+          No active flood alerts or abnormal surface water expansions were detected for your monitored cities during this period.
+        </p>
+      </div>'''
     else:
+        rows_html = ''
         for a in alarm_history[:30]:   # cap at 30 rows
             sev = a.get('severity', 'NONE')
             color = ALARM_COLORS.get(sev, '#64748b')
@@ -71,6 +73,32 @@ def build_html_report(alarm_history: list, week_start: str, week_end: str) -> st
                 <td style="padding:10px 14px; text-align:right; color:#1e293b;">{flood_km2:.2f} km²</td>
                 <td style="padding:10px 14px; text-align:right; color:#1e293b;">{change:+.1f}%</td>
             </tr>'''
+
+        events_block = f'''
+      <p style="margin:0 0 12px; font-size:15px; font-weight:700; color:#1e293b;">
+        📋 Flood Events Log
+      </p>
+      <table width="100%" cellpadding="0" cellspacing="0"
+             style="border-collapse:collapse; border:1px solid #e2e8f0; border-radius:8px;
+                    overflow:hidden; font-size:13px;">
+        <thead>
+          <tr style="background:#f8fafc;">
+            <th style="padding:10px 14px; text-align:left; color:#64748b;
+                       font-weight:600; border-bottom:2px solid #e2e8f0;">Time</th>
+            <th style="padding:10px 14px; text-align:left; color:#64748b;
+                       font-weight:600; border-bottom:2px solid #e2e8f0;">Location</th>
+            <th style="padding:10px 14px; text-align:center; color:#64748b;
+                       font-weight:600; border-bottom:2px solid #e2e8f0;">Severity</th>
+            <th style="padding:10px 14px; text-align:right; color:#64748b;
+                       font-weight:600; border-bottom:2px solid #e2e8f0;">New Flood</th>
+            <th style="padding:10px 14px; text-align:right; color:#64748b;
+                       font-weight:600; border-bottom:2px solid #e2e8f0;">Change</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows_html}
+        </tbody>
+      </table>'''
 
     # Summary pill HTML
     pills = ''
@@ -142,30 +170,7 @@ def build_html_report(alarm_history: list, week_start: str, week_end: str) -> st
   <!-- Events table -->
   <tr>
     <td style="padding:28px 40px 0;">
-      <p style="margin:0 0 12px; font-size:15px; font-weight:700; color:#1e293b;">
-        📋 Flood Events Log
-      </p>
-      <table width="100%" cellpadding="0" cellspacing="0"
-             style="border-collapse:collapse; border:1px solid #e2e8f0; border-radius:8px;
-                    overflow:hidden; font-size:13px;">
-        <thead>
-          <tr style="background:#f8fafc;">
-            <th style="padding:10px 14px; text-align:left; color:#64748b;
-                       font-weight:600; border-bottom:2px solid #e2e8f0;">Time</th>
-            <th style="padding:10px 14px; text-align:left; color:#64748b;
-                       font-weight:600; border-bottom:2px solid #e2e8f0;">Location</th>
-            <th style="padding:10px 14px; text-align:center; color:#64748b;
-                       font-weight:600; border-bottom:2px solid #e2e8f0;">Severity</th>
-            <th style="padding:10px 14px; text-align:right; color:#64748b;
-                       font-weight:600; border-bottom:2px solid #e2e8f0;">New Flood</th>
-            <th style="padding:10px 14px; text-align:right; color:#64748b;
-                       font-weight:600; border-bottom:2px solid #e2e8f0;">Change</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows_html}
-        </tbody>
-      </table>
+      {events_block}
     </td>
   </tr>
 
