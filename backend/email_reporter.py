@@ -89,6 +89,8 @@ def _get_weather_forecast_html(cities: list) -> str:
             
     unique_cities = unique_cities[:4]
     
+    weather_key = os.environ.get('WEATHER_API_KEY')
+    
     rows = []
     for city in unique_cities:
         coords = resolve_coordinates(city)
@@ -96,30 +98,67 @@ def _get_weather_forecast_html(cities: list) -> str:
             continue
         lat, lon = coords
         try:
-            url = f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&daily=precipitation_sum,weather_code&timezone=auto"
-            res = requests.get(url, timeout=10.0)
-            if res.status_code == 200:
-                data = res.json()
-                daily = data.get('daily', {})
-                precip = sum(daily.get('precipitation_sum', [0.0]))
-                codes = daily.get('weather_code', [0])
-                code = codes[0] if codes else 0
-                desc = get_weather_desc(code)
-                
-                if precip >= 100.0:
-                    risk = '<span style="color:#ef4444; font-weight:700;">⚠️ High Risk</span>'
-                elif precip >= 40.0:
-                    risk = '<span style="color:#f59e0b; font-weight:700;">🌧️ Medium Risk</span>'
-                else:
-                    risk = '<span style="color:#22c55e; font-weight:700;">☀️ Low Risk</span>'
+            if weather_key:
+                # Use WeatherAPI.com (identifies by key, bypasses IP rate limiting)
+                url = f"http://api.weatherapi.com/v1/forecast.json?key={weather_key}&q={lat},{lon}&days=7"
+                res = requests.get(url, timeout=10.0)
+                if res.status_code == 200:
+                    data = res.json()
+                    forecastday = data.get('forecast', {}).get('forecastday', [])
+                    precip = sum(float(d.get('day', {}).get('totalprecip_mm', 0.0)) for d in forecastday)
                     
-                rows.append(f"""
-              <tr style="border-bottom:1px solid #f1f5f9;">
-                <td style="padding:10px 0; color:#1e293b; font-weight:600;">{city}</td>
-                <td style="padding:10px 0; text-align:center; color:#475569;">{desc}</td>
-                <td style="padding:10px 0; text-align:right; color:#1e293b; font-weight:600;">{precip:.1f} mm</td>
-                <td style="padding:10px 0; text-align:right;">{risk}</td>
-              </tr>""")
+                    # Get condition of the first day
+                    cond_text = "Variable"
+                    if forecastday:
+                        cond_text = forecastday[0].get('day', {}).get('condition', {}).get('text', 'Variable')
+                    
+                    # Map condition text to emoji
+                    cond_lower = cond_text.lower()
+                    emoji = "🌤️"
+                    if "rain" in cond_lower or "drizzle" in cond_lower or "shower" in cond_lower:
+                        emoji = "🌧️"
+                    elif "thunder" in cond_lower:
+                        emoji = "⛈️"
+                    elif "clear" in cond_lower or "sunny" in cond_lower:
+                        emoji = "☀️"
+                    elif "cloud" in cond_lower or "overcast" in cond_lower:
+                        emoji = "🌤️"
+                    elif "snow" in cond_lower:
+                        emoji = "❄️"
+                    elif "fog" in cond_lower or "mist" in cond_lower:
+                        emoji = "🌫️"
+                        
+                    desc = f"{cond_text} {emoji}"
+                else:
+                    raise ValueError(f"WeatherAPI returned status {res.status_code}: {res.text}")
+            else:
+                # Use keyless Open-Meteo
+                url = f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&daily=precipitation_sum,weather_code&timezone=auto"
+                res = requests.get(url, timeout=10.0)
+                if res.status_code == 200:
+                    data = res.json()
+                    daily = data.get('daily', {})
+                    precip = sum(daily.get('precipitation_sum', [0.0]))
+                    codes = daily.get('weather_code', [0])
+                    code = codes[0] if codes else 0
+                    desc = get_weather_desc(code)
+                else:
+                    raise ValueError(f"Open-Meteo returned status {res.status_code}: {res.text}")
+                
+            if precip >= 100.0:
+                risk = '<span style="color:#ef4444; font-weight:700;">⚠️ High Risk</span>'
+            elif precip >= 40.0:
+                risk = '<span style="color:#f59e0b; font-weight:700;">🌧️ Medium Risk</span>'
+            else:
+                risk = '<span style="color:#22c55e; font-weight:700;">☀️ Low Risk</span>'
+                
+            rows.append(f"""
+          <tr style="border-bottom:1px solid #f1f5f9;">
+            <td style="padding:10px 0; color:#1e293b; font-weight:600;">{city}</td>
+            <td style="padding:10px 0; text-align:center; color:#475569;">{desc}</td>
+            <td style="padding:10px 0; text-align:right; color:#1e293b; font-weight:600;">{precip:.1f} mm</td>
+            <td style="padding:10px 0; text-align:right;">{risk}</td>
+          </tr>""")
         except Exception as e:
             print(f"[WEATHER ERROR] Failed to fetch weather for {city}: {e}", flush=True)
             logger.warning(f"Failed to fetch weather for {city}: {e}")
