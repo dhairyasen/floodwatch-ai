@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: floodwatch-ai
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn backend.main:app --host 0.0.0.0 --port $PORT
+    plan: free
+    envVars:
+      - key: EMAIL_SENDER
+        value: dhairyasen7@gmail.com
+      - key: EMAIL_PASSWORD
+        value: avjegjkuqfnzlgbq
+      - key: ADMIN_API_KEY
+        value: floodwatch_admin_secret
+      - key: PYTHON_VERSION
+        value: "3.11.0"
