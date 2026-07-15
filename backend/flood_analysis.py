@@ -443,12 +443,13 @@ class FloodAnalyzer:
         
         change_pct = results['water_coverage_change']
         new_flood = results['new_flooded_area']
+        water_before = results['water_before']
+        water_after = results['water_after']
         
-        if new_flood > 1.0:  # Significant flooding
-            existing = results['water_before']
-            sizes = [new_flood, existing]
-            labels = [f'New Flooded\n({new_flood:.1f} km²)', 
-                     f'Baseline Water\n({existing:.1f} km²)']
+        if change_pct > 5 and new_flood > 0.1:  # Significant flooding
+            sizes = [new_flood, water_before]
+            labels = [f'New Flooded\n({new_flood:.2f} km²)', 
+                     f'Baseline Water\n({water_before:.2f} km²)']
             colors_pie = ['#ef4444', '#3b82f6']
             explode = (0.1, 0)
             
@@ -461,31 +462,37 @@ class FloodAnalyzer:
                 autotext.set_fontsize(11)
                 autotext.set_weight('bold')
             
-            ax.set_title('Flood Severity Breakdown', fontsize=14, fontweight='bold', pad=20)
+            ax.set_title(f'Water Status: Flooding ({change_pct:+.1f}%)', fontsize=14, fontweight='bold', pad=20)
             
         elif change_pct < -5:  # Water DECREASED
-            ax.axis('off')
-            ax.text(0.5, 0.5, 
-                   f'Water Level DECREASED\n\n'
-                   f'Reduction: {abs(change_pct):.0f}%\n\n'
-                   f'(Drying trend - No flooding)', 
-                   ha='center', va='center', fontsize=13, 
-                   transform=ax.transAxes,
-                   bbox=dict(boxstyle='round', facecolor='#d4edda', 
-                            alpha=0.8, edgecolor='#28a745', linewidth=3))
-            ax.set_title('Water Status: Improving', fontsize=14, fontweight='bold', pad=20)
+            receded = max(0, water_before - water_after)
+            sizes = [water_after, receded]
+            labels = [f'Remaining Water\n({water_after:.2f} km²)', 
+                     f'Receded Water\n({receded:.2f} km²)']
+            colors_pie = ['#3b82f6', '#10b981']
+            explode = (0, 0.1)
             
-        else:  # Minimal change
-            ax.axis('off')
-            ax.text(0.5, 0.5, 
-                   f'MINIMAL CHANGE\n\n'
-                   f'Change: {change_pct:+.1f}%\n\n'
-                   f'(No significant flooding)', 
-                   ha='center', va='center', fontsize=13, 
-                   transform=ax.transAxes,
-                   bbox=dict(boxstyle='round', facecolor='#d1ecf1', 
-                            alpha=0.8, edgecolor='#17a2b8', linewidth=3))
-            ax.set_title('Water Status: Stable', fontsize=14, fontweight='bold', pad=20)
+            wedges, texts, autotexts = ax.pie(sizes, explode=explode, labels=labels, 
+                   colors=colors_pie, autopct='%1.1f%%', shadow=True, startangle=90,
+                   textprops={'fontsize': 10, 'weight': 'bold'})
+            
+            for autotext in autotexts:
+                autotext.set_color('white')
+                autotext.set_fontsize(11)
+                autotext.set_weight('bold')
+            
+            ax.set_title(f'Water Status: Improving ({change_pct:+.1f}%)', fontsize=14, fontweight='bold', pad=20)
+            
+        else:  # Minimal change / Stable
+            sizes = [water_after]
+            labels = [f'Stable Water\n({water_after:.2f} km²)']
+            colors_pie = ['#3b82f6']
+            
+            wedges, texts = ax.pie(sizes, labels=labels, 
+                   colors=colors_pie, shadow=True, startangle=90,
+                   textprops={'fontsize': 10, 'weight': 'bold'})
+            
+            ax.set_title(f'Water Status: Stable ({change_pct:+.1f}%)', fontsize=14, fontweight='bold', pad=20)
         
         plt.tight_layout()
         plt.savefig(os.path.join(self.outputs_dir, 'water_composition.png'), dpi=300, bbox_inches='tight')
