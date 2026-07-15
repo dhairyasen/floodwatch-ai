@@ -244,6 +244,53 @@ class WeeklyReporter:
             logger.warning("No recipients configured for weekly report.")
             return {'status': 'skipped', 'reason': 'no recipients', 'events': len(week_alarms)}
 
+        # Intercept for Brevo API
+        if os.environ.get('BREVO_API_KEY'):
+            sent = []
+            failed = []
+            if subscribers:
+                for sub in subscribers:
+                    addr = sub['email']
+                    cities = sub.get('cities', [])
+                    
+                    if cities and "all" not in [c.lower() for c in cities]:
+                        user_alarms = [
+                            a for a in week_alarms
+                            if any(c.lower() in a.get('location_name', '').lower() for c in cities)
+                        ]
+                    else:
+                        user_alarms = week_alarms
+                        
+                    html_body = build_html_report(user_alarms, ws_str, we_str)
+                    subject = (
+                        f"🌊 FloodWatch AI — Weekly Report ({ws_str} to {we_str}) "
+                        f"| {len(user_alarms)} event{'s' if len(user_alarms) != 1 else ''}"
+                    )
+                    res = self._send_email_via_brevo(addr, subject, html_body)
+                    if res.get('status') == 'sent':
+                        sent.append(addr)
+                    else:
+                        failed.append({'email': addr, 'error': res.get('error', 'Unknown Brevo error')})
+            else:
+                html_body = build_html_report(week_alarms, ws_str, we_str)
+                subject = (
+                    f"🌊 FloodWatch AI — Weekly Report ({ws_str} to {we_str}) "
+                    f"| {len(week_alarms)} event{'s' if len(week_alarms) != 1 else ''}"
+                )
+                for addr in self.fallback_recipients:
+                    res = self._send_email_via_brevo(addr, subject, html_body)
+                    if res.get('status') == 'sent':
+                        sent.append(addr)
+                    else:
+                        failed.append({'email': addr, 'error': res.get('error', 'Unknown Brevo error')})
+            return {
+                'status': 'sent',
+                'sent_to': sent,
+                'failed': failed,
+                'events_included': len(week_alarms),
+                'period': f'{ws_str} to {we_str}',
+            }
+
         # Intercept for Resend API
         if os.environ.get('RESEND_API_KEY'):
             sent = []
@@ -390,10 +437,6 @@ class WeeklyReporter:
 
     def send_welcome_email(self, email: str, name: str = '', cities: list = None) -> dict:
         """Send a confirmation welcome email immediately to the subscriber."""
-        if not self.sender_email or not self.sender_password:
-            logger.warning("EMAIL_SENDER / EMAIL_PASSWORD not set; skipping welcome email.")
-            return {'status': 'skipped', 'reason': 'email credentials not configured'}
-            
         cities_str = ", ".join(cities) if cities else "All monitored cities"
         subject = "🌊 Welcome to FloodWatch AI Alerts!"
         
@@ -447,9 +490,17 @@ class WeeklyReporter:
 </body>
 </html>"""
 
+        # Intercept for Brevo API
+        if os.environ.get('BREVO_API_KEY'):
+            return self._send_email_via_brevo(email, subject, html)
+
         # Intercept for Resend API
         if os.environ.get('RESEND_API_KEY'):
             return self._send_email_via_resend(email, subject, html)
+
+        if not self.sender_email or not self.sender_password:
+            logger.warning("EMAIL_SENDER / EMAIL_PASSWORD not set; skipping welcome email.")
+            return {'status': 'skipped', 'reason': 'email credentials not configured'}
 
         try:
             with smtplib.SMTP_SSL('smtp.gmail.com', 465, timeout=10.0) as server:
@@ -497,6 +548,10 @@ class WeeklyReporter:
             f"🌊 FloodWatch AI — Initial Flood Report ({ws_str} to {we_str}) "
             f"| {len(user_alarms)} event{'s' if len(user_alarms) != 1 else ''}"
         )
+
+        # Intercept for Brevo API
+        if os.environ.get('BREVO_API_KEY'):
+            return self._send_email_via_brevo(email, subject, html_body)
 
         # Intercept for Resend API
         if os.environ.get('RESEND_API_KEY'):
@@ -553,4 +608,46 @@ class WeeklyReporter:
                 return {'status': 'error', 'error': f"Resend API returned {response.status_code}: {response.text}"}
         except Exception as e:
             logger.error(f"Failed to send email via Resend API to {to_email}: {e}")
+            return {'status': 'error', 'error': str(e)}
+
+    def _send_email_via_brevo(self, to_email: str, subject: str, html_body: str) -> dict:
+        """Send email via Brevo's HTTPS REST API to bypass SMTP port blocks on Render."""
+        api_key = os.environ.get('BREVO_API_KEY')
+        if not api_key:
+            return {'status': 'skipped', 'reason': 'no brevo api key'}
+            
+        sender_email = os.environ.get('EMAIL_SENDER', 'dhairyasen7@gmail.com')
+        if not sender_email or '@' not in sender_email:
+            sender_email = 'dhairyasen7@gmail.com'
+            
+        url = "https://api.brevo.com/v3/smtp/email"
+        headers = {
+            "api-key": api_key,
+            "Content-Type": "application/json",
+            "Accept": "application/json"
+        }
+        data = {
+            "sender": {
+                "name": "FloodWatch AI",
+                "email": sender_email
+            },
+            "to": [
+                {
+                    "email": to_email
+                }
+            ],
+            "subject": subject,
+            "htmlContent": html_body
+        }
+        
+        try:
+            response = requests.post(url, headers=headers, json=data, timeout=10.0)
+            if response.status_code in (200, 201, 202):
+                logger.info(f"Email sent successfully via Brevo API to {to_email}")
+                return {'status': 'sent', 'email': to_email}
+            else:
+                logger.error(f"Brevo API error: {response.text}")
+                return {'status': 'error', 'error': f"Brevo API returned {response.status_code}: {response.text}"}
+        except Exception as e:
+            logger.error(f"Failed to send email via Brevo API to {to_email}: {e}")
             return {'status': 'error', 'error': str(e)}
