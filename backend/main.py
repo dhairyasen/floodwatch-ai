@@ -247,13 +247,32 @@ async def alarm_history(limit: int = 20):
 @app.post("/subscribe")
 async def subscribe(req: SubscribeRequest):
     result = alarm_system.subscribe(req.email, req.name, req.cities)
+    email_status = {}
     if result.get('status') in ('subscribed', 'updated'):
         try:
-            reporter.send_welcome_email(req.email, req.name, req.cities)
-            reporter.send_personalized_report_to_email(req.email, req.name, req.cities)
+            welcome_res = reporter.send_welcome_email(req.email, req.name, req.cities)
+            report_res = reporter.send_personalized_report_to_email(req.email, req.name, req.cities)
+            email_status = {
+                "welcome": welcome_res,
+                "initial_report": report_res
+            }
         except Exception as e:
-            print(f"[WARNING] Failed to send subscription emails to {req.email}: {e}")
+            email_status = {"error": str(e)}
+    result["email_status"] = email_status
     return JSONResponse(content=result)
+
+
+@app.get("/debug-email")
+async def debug_email(email: str):
+    """Helper endpoint to test and diagnose email sending failures."""
+    welcome_res = reporter.send_welcome_email(email, "Debug User", ["Mumbai"])
+    report_res = reporter.send_personalized_report_to_email(email, "Debug User", ["Mumbai"])
+    return JSONResponse(content={
+        "sender_configured": bool(reporter.sender_email),
+        "sender_email": reporter.sender_email,
+        "welcome_status": welcome_res,
+        "report_status": report_res
+    })
 
 
 @app.post("/unsubscribe")
