@@ -265,14 +265,26 @@ async def subscribe(req: SubscribeRequest, background_tasks: BackgroundTasks):
 @app.get("/debug-email")
 async def debug_email(email: str):
     """Helper endpoint to test and diagnose email sending failures."""
-    weather_debug = ""
+    weather_debug = {}
     try:
-        from email_reporter import _get_weather_forecast_html
-        weather_debug = _get_weather_forecast_html(["Chennai"])
-        if not weather_debug:
-            weather_debug = "EMPTY_RESULT"
+        from email_reporter import resolve_coordinates
+        coords = resolve_coordinates("Chennai")
+        weather_debug["resolved_coordinates"] = str(coords)
+        if coords:
+            lat, lon = coords
+            import requests
+            url = f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&daily=precipitation_sum,weather_code&timezone=auto"
+            try:
+                res = requests.get(url, timeout=10.0)
+                weather_debug["api_status_code"] = res.status_code
+                if res.status_code == 200:
+                    weather_debug["api_response_snippet"] = str(res.json())[:200]
+                else:
+                    weather_debug["api_response_error"] = res.text
+            except Exception as api_err:
+                weather_debug["api_exception"] = str(api_err)
     except Exception as e:
-        weather_debug = f"ERROR: {e}"
+        weather_debug["general_error"] = str(e)
 
     welcome_res = reporter.send_welcome_email(email, "Debug User", ["Mumbai"])
     report_res = reporter.send_personalized_report_to_email(email, "Debug User", ["Mumbai"])
