@@ -1,11 +1,13 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Depends, Security
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse, HTMLResponse
+from fastapi.security.api_key import APIKeyHeader
 from pydantic import BaseModel, EmailStr
 from typing import Optional, List
 import os
 import json
 import ee
+from datetime import datetime
 
 # Initialize FastAPI app
 app = FastAPI(title="FloodWatch AI", version="2.0.0")
@@ -29,6 +31,26 @@ os.makedirs(outputs_dir, exist_ok=True)
 
 
 # ---------------------------------------------------------------------- #
+# API Key Authentication
+# ---------------------------------------------------------------------- #
+API_KEY_NAME = "X-Admin-API-Key"
+api_key_header = APIKeyHeader(name=API_KEY_NAME, auto_error=False)
+
+ADMIN_API_KEY = os.environ.get("ADMIN_API_KEY")
+if not ADMIN_API_KEY:
+    ADMIN_API_KEY = "floodwatch_admin_secret"
+    print(f"[WARNING] ADMIN_API_KEY environment variable not set. Falling back to default: '{ADMIN_API_KEY}'")
+
+async def get_api_key(header_key: Optional[str] = Security(api_key_header)):
+    if not header_key or header_key != ADMIN_API_KEY:
+        raise HTTPException(
+            status_code=401,
+            detail="Could not authenticate. Invalid or missing X-Admin-API-Key header."
+        )
+    return header_key
+
+
+# ---------------------------------------------------------------------- #
 # GEE Init
 # ---------------------------------------------------------------------- #
 def init_gee():
@@ -45,12 +67,12 @@ def init_gee():
                 key_data=key_json_str
             )
             ee.Initialize(credentials, project='flood-analysis-478517')
-            print("✓ GEE initialized with service account!")
+            print("[OK] GEE initialized with service account!")
         else:
             ee.Initialize(project='flood-analysis-478517')
-            print("✓ GEE initialized with local credentials!")
+            print("[OK] GEE initialized with local credentials!")
     except Exception as e:
-        print(f"⚠ GEE initialization failed: {e}")
+        print(f"[ERROR] GEE initialization failed: {e}")
 
 
 init_gee()
@@ -72,7 +94,7 @@ reporter = WeeklyReporter()
 @app.on_event("startup")
 async def startup_event():
     start_scheduler()
-    print("✓ Background scheduler started")
+    print("[OK] Background scheduler started")
 
 
 @app.on_event("shutdown")
@@ -81,7 +103,7 @@ async def shutdown_event():
 
 
 # ---------------------------------------------------------------------- #
-# Request models
+# Request models & Validation
 # ---------------------------------------------------------------------- #
 class AnalyzeRequest(BaseModel):
     location: str
@@ -91,6 +113,60 @@ class AnalyzeRequest(BaseModel):
     after_end_date: str
     lat: Optional[float] = None
     lon: Optional[float] = None
+
+
+def validate_analyze_request(req: AnalyzeRequest):
+    def parse_date(d_str, field_name):
+        for fmt in ('%d-%m-%Y', '%Y-%m-%d'):
+            try:
+                return datetime.strptime(d_str, fmt)
+            except ValueError:
+                pass
+        raise HTTPException(
+            status_code=422,
+            detail=f"Invalid date format for '{field_name}': '{d_str}'. Must be in DD-MM-YYYY or YYYY-MM-DD format."
+        )
+
+    b_start = parse_date(req.before_start_date, "before_start_date")
+    b_end = parse_date(req.before_end_date, "before_end_date")
+    a_start = parse_date(req.after_start_date, "after_start_date")
+    a_end = parse_date(req.after_end_date, "after_end_date")
+
+    if b_start > b_end:
+        raise HTTPException(status_code=422, detail="Before start date must be before or equal to before end date.")
+    if a_start > a_end:
+        raise HTTPException(status_code=422, detail="After start date must be before or equal to after end date.")
+    if b_end >= a_start:
+        raise HTTPException(status_code=422, detail="Baseline period (before) must end before the current period (after) starts.")
+
+    # Validate coordinates if provided
+    if req.lat is not None:
+        if req.lat < -90 or req.lat > 90:
+            raise HTTPException(status_code=422, detail="Latitude must be between -90 and 90.")
+    if req.lon is not None:
+        if req.lon < -180 or req.lon > 180:
+            raise HTTPException(status_code=422, detail="Longitude must be between -180 and 180.")
+
+    # Validate location name
+    if not req.location.strip():
+        raise HTTPException(status_code=422, detail="Location name cannot be empty.")
+
+    # If coordinates are not provided, make sure we can resolve the location
+    if req.lat is None or req.lon is None:
+        location_lower = req.location.lower().strip()
+        from config import CITY_COORDINATES
+        if location_lower not in CITY_COORDINATES:
+            try:
+                parts = req.location.split(',')
+                if len(parts) != 2:
+                    raise ValueError()
+                float(parts[0].strip())
+                float(parts[1].strip())
+            except ValueError:
+                raise HTTPException(
+                    status_code=422,
+                    detail=f"Location '{req.location}' is not a recognized city. Please select from autocomplete or enter as 'latitude, longitude'."
+                )
 
 
 class SubscribeRequest(BaseModel):
@@ -108,6 +184,7 @@ class UnsubscribeRequest(BaseModel):
 # ---------------------------------------------------------------------- #
 @app.post("/analyze")
 async def analyze(request: AnalyzeRequest):
+    validate_analyze_request(request)
     try:
         results = analyzer.analyze(
             request.location,
@@ -180,7 +257,7 @@ async def unsubscribe(req: UnsubscribeRequest):
 
 
 @app.get("/subscribers")
-async def list_subscribers():
+async def list_subscribers(api_key: str = Depends(get_api_key)):
     """Admin endpoint — list all active subscribers."""
     return JSONResponse(content=alarm_system.get_subscribers())
 
@@ -189,7 +266,7 @@ async def list_subscribers():
 # Phase 2 — Email Report Routes
 # ---------------------------------------------------------------------- #
 @app.post("/report/send")
-async def send_report():
+async def send_report(api_key: str = Depends(get_api_key)):
     """Trigger the weekly report email immediately (admin / testing)."""
     try:
         result = reporter.send_weekly_report()
@@ -210,9 +287,9 @@ async def scheduler_status():
     return JSONResponse(content=get_scheduler_status())
 
 
-# ---------------------------------------------------------------------- #
+
 # Static file serving
-# ---------------------------------------------------------------------- #
+
 @app.get("/styles.css")
 async def styles():
     return FileResponse(os.path.join(frontend_dir, 'styles.css'))

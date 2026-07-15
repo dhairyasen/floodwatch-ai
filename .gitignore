@@ -1,0 +1,25 @@
+# Python bytecode & cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+
+# Databases & local data
+*.db
+*.sqlite3
+data/
+test_data/
+
+# Output directories with generated charts/maps
+outputs/
+
+# Virtual environments
+venv/
+.venv/
+env/
+.env
+
+# OS-specific files
+.DS_Store
+Thumbs.db

@@ -194,6 +194,7 @@ function displayResults(data) {
     // Phase 2 — alarm banner + history refresh
     if (data.alarm) {
         showAlarmBanner(data.alarm);
+        alarmLimit = 10; // Reset pagination limit on new analysis
         loadAlarmHistory();
     }
 }
@@ -284,13 +285,15 @@ function showSubscribeStatus(msg, type) {
 }
 
 /* ============================================================
-   Phase 2 — Alarm history list
+   Phase 2 — Alarm history list (with pagination)
    ============================================================ */
+let alarmLimit = 10;
+
 async function loadAlarmHistory() {
     const container = document.getElementById('alarmHistoryList');
     const btn = document.getElementById('loadMoreBtn');
     try {
-        const res = await fetch('/alarms/history?limit=10');
+        const res = await fetch(`/alarms/history?limit=${alarmLimit}`);
         const data = await res.json();
         if (!Array.isArray(data) || data.length === 0) {
             container.innerHTML = `<p style="color:var(--gray);font-size:13px;margin-top:8px;font-style:italic;">No alarm history yet. Run an analysis to generate your first alarm record.</p>`;
@@ -314,11 +317,22 @@ async function loadAlarmHistory() {
                 <div class="ah-flood">${flood} km²</div>
             </div>`;
         }).join('');
-        btn.style.display = 'block';
+        
+        // Hide Load More button if we fetched fewer records than our current limit
+        if (data.length < alarmLimit) {
+            btn.style.display = 'none';
+        } else {
+            btn.style.display = 'block';
+        }
     } catch (err) {
         container.innerHTML = `<p style="color:var(--gray);font-size:13px;">Could not load history (server may be offline).</p>`;
         btn.style.display = 'none';
     }
+}
+
+function loadMoreAlarms() {
+    alarmLimit += 10;
+    loadAlarmHistory();
 }
 
 loadAlarmHistory();

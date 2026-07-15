@@ -1,7 +1,16 @@
+import sys
+import os
+
+print("\n" + "!" * 80)
+print("  WARNING: server_legacy.py is DEPRECATED and has been retired.")
+print("  Please run the FastAPI server using uvicorn instead:")
+print("  uvicorn main:app --reload")
+print("!" * 80 + "\n")
+sys.exit(1)
+
 from http.server import HTTPServer, BaseHTTPRequestHandler
 import json
 from flood_analysis import FloodAnalyzer
-import os
 import ee
 
 backend_dir = os.path.dirname(os.path.abspath(__file__))
