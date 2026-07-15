@@ -273,7 +273,12 @@ async def debug_email(email: str):
         if coords:
             lat, lon = coords
             import requests
-            url = f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&daily=precipitation_sum,weather_code&timezone=auto"
+            weather_key = os.environ.get('WEATHER_API_KEY')
+            weather_debug["weather_key_configured"] = bool(weather_key)
+            if weather_key:
+                url = f"http://api.weatherapi.com/v1/forecast.json?key={weather_key}&q={lat},{lon}&days=7"
+            else:
+                url = f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&daily=precipitation_sum,weather_code&timezone=auto"
             try:
                 res = requests.get(url, timeout=10.0)
                 weather_debug["api_status_code"] = res.status_code
