@@ -97,7 +97,7 @@ def _get_weather_forecast_html(cities: list) -> str:
         lat, lon = coords
         try:
             url = f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&daily=precipitation_sum,weather_code&timezone=auto"
-            res = requests.get(url, timeout=3.0)
+            res = requests.get(url, timeout=10.0)
             if res.status_code == 200:
                 data = res.json()
                 daily = data.get('daily', {})
@@ -121,6 +121,7 @@ def _get_weather_forecast_html(cities: list) -> str:
                 <td style="padding:10px 0; text-align:right;">{risk}</td>
               </tr>""")
         except Exception as e:
+            print(f"[WEATHER ERROR] Failed to fetch weather for {city}: {e}", flush=True)
             logger.warning(f"Failed to fetch weather for {city}: {e}")
             
     if not rows:
@@ -170,6 +171,7 @@ def build_html_report(alarm_history: list, week_start: str, week_end: str, citie
     try:
         weather_block = _get_weather_forecast_html(cities)
     except Exception as e:
+        print(f"[WEATHER BLOCK ERROR] Failed to build weather forecast block: {e}", flush=True)
         logger.warning(f"Failed to build weather forecast block: {e}")
         weather_block = ""
 
