@@ -24,10 +24,144 @@ logger = logging.getLogger(__name__)
 
 
 # ------------------------------------------------------------------ #
+# Weather Forecast Helper
+# ------------------------------------------------------------------ #
+def get_weather_desc(code):
+    if code == 0:
+        return "Clear Sky ☀️"
+    elif code in (1, 2, 3):
+        return "Partly Cloudy 🌤️"
+    elif code in (45, 48):
+        return "Foggy 🌫️"
+    elif code in (51, 53, 55, 61, 63, 65, 80, 81, 82):
+        return "Rainy 🌧️"
+    elif code in (71, 73, 75):
+        return "Snowy ❄️"
+    elif code in (95, 96, 99):
+        return "Thunderstorm ⛈️"
+    return "Variable 🌤️"
+
+
+def resolve_coordinates(city_name: str):
+    from config import CITY_COORDINATES
+    city_lower = str(city_name).lower().strip()
+    if city_lower in CITY_COORDINATES:
+        return CITY_COORDINATES[city_lower]['lat'], CITY_COORDINATES[city_lower]['lon']
+    
+    # Try parsing as lat, lon string
+    try:
+        parts = city_name.split(',')
+        if len(parts) == 2:
+            return float(parts[0].strip()), float(parts[1].strip())
+    except:
+        pass
+        
+    # Try simple Nominatim lookup
+    try:
+        url = f"https://nominatim.openstreetmap.org/search?q={city_name}&format=json&limit=1"
+        headers = {'User-Agent': 'FloodWatch-AI/1.0'}
+        res = requests.get(url, headers=headers, timeout=3.0)
+        data = res.json()
+        if data:
+            return float(data[0]['lat']), float(data[0]['lon'])
+    except Exception as e:
+        logger.warning(f"Failed to geocode '{city_name}' for weather: {e}")
+        
+    return None
+
+
+def _get_weather_forecast_html(cities: list) -> str:
+    if not cities:
+        cities = ['Chennai', 'Mumbai']
+        
+    resolved_cities = []
+    for c in cities:
+        if c.lower() == 'all':
+            resolved_cities.extend(['Chennai', 'Mumbai'])
+        else:
+            resolved_cities.append(c)
+            
+    unique_cities = []
+    for c in resolved_cities:
+        c_title = str(c).strip().title()
+        if c_title not in unique_cities:
+            unique_cities.append(c_title)
+            
+    unique_cities = unique_cities[:4]
+    
+    rows = []
+    for city in unique_cities:
+        coords = resolve_coordinates(city)
+        if not coords:
+            continue
+        lat, lon = coords
+        try:
+            url = f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&daily=precipitation_sum,weather_code&timezone=auto"
+            res = requests.get(url, timeout=3.0)
+            if res.status_code == 200:
+                data = res.json()
+                daily = data.get('daily', {})
+                precip = sum(daily.get('precipitation_sum', [0.0]))
+                codes = daily.get('weather_code', [0])
+                code = codes[0] if codes else 0
+                desc = get_weather_desc(code)
+                
+                if precip >= 100.0:
+                    risk = '<span style="color:#ef4444; font-weight:700;">⚠️ High Risk</span>'
+                elif precip >= 40.0:
+                    risk = '<span style="color:#f59e0b; font-weight:700;">🌧️ Medium Risk</span>'
+                else:
+                    risk = '<span style="color:#22c55e; font-weight:700;">☀️ Low Risk</span>'
+                    
+                rows.append(f"""
+              <tr style="border-bottom:1px solid #f1f5f9;">
+                <td style="padding:10px 0; color:#1e293b; font-weight:600;">{city}</td>
+                <td style="padding:10px 0; text-align:center; color:#475569;">{desc}</td>
+                <td style="padding:10px 0; text-align:right; color:#1e293b; font-weight:600;">{precip:.1f} mm</td>
+                <td style="padding:10px 0; text-align:right;">{risk}</td>
+              </tr>""")
+        except Exception as e:
+            logger.warning(f"Failed to fetch weather for {city}: {e}")
+            
+    if not rows:
+        return ""
+        
+    rows_str = "\n".join(rows)
+    return f"""
+  <!-- Weather Forecast Section -->
+  <tr>
+    <td style="padding:24px 40px 0;">
+      <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:12px; padding:20px;">
+        <p style="margin:0 0 12px; font-size:12px; color:#64748b; font-weight:600;
+                  text-transform:uppercase; letter-spacing:0.5px;">🌦️ 7-Day Rainfall Forecast & Risk Outlook</p>
+        <table width="100%" cellpadding="0" cellspacing="0" style="font-size:13px; border-collapse:collapse;">
+          <thead>
+            <tr style="border-bottom:2px solid #e2e8f0;">
+              <th style="padding:6px 0; text-align:left; color:#64748b; font-weight:600;">Location</th>
+              <th style="padding:6px 0; text-align:center; color:#64748b; font-weight:600;">Forecast</th>
+              <th style="padding:6px 0; text-align:right; color:#64748b; font-weight:600;">7-Day Rain</th>
+              <th style="padding:6px 0; text-align:right; color:#64748b; font-weight:600;">Flood Risk</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows_str}
+          </tbody>
+        </table>
+      </div>
+    </td>
+  </tr>"""
+
+
+# ------------------------------------------------------------------ #
 # HTML report builder
 # ------------------------------------------------------------------ #
-def build_html_report(alarm_history: list, week_start: str, week_end: str) -> str:
+def build_html_report(alarm_history: list, week_start: str, week_end: str, cities: list = None) -> str:
     """Render a full HTML email from a list of alarm dicts."""
+    try:
+        weather_block = _get_weather_forecast_html(cities)
+    except Exception as e:
+        logger.warning(f"Failed to build weather forecast block: {e}")
+        weather_block = ""
 
     # Summary counts
     counts = {'NONE': 0, 'LOW': 0, 'MEDIUM': 0, 'HIGH': 0, 'CRITICAL': 0}
@@ -167,6 +301,8 @@ def build_html_report(alarm_history: list, week_start: str, week_end: str) -> st
     </td>
   </tr>
 
+  {weather_block}
+
   <!-- Events table -->
   <tr>
     <td style="padding:28px 40px 0;">
@@ -266,7 +402,7 @@ class WeeklyReporter:
                     else:
                         user_alarms = week_alarms
                         
-                    html_body = build_html_report(user_alarms, ws_str, we_str)
+                    html_body = build_html_report(user_alarms, ws_str, we_str, cities)
                     subject = (
                         f"🌊 FloodWatch AI — Weekly Report ({ws_str} to {we_str}) "
                         f"| {len(user_alarms)} event{'s' if len(user_alarms) != 1 else ''}"
@@ -277,7 +413,7 @@ class WeeklyReporter:
                     else:
                         failed.append({'email': addr, 'error': res.get('error', 'Unknown Gmail API error')})
             else:
-                html_body = build_html_report(week_alarms, ws_str, we_str)
+                html_body = build_html_report(week_alarms, ws_str, we_str, None)
                 subject = (
                     f"🌊 FloodWatch AI — Weekly Report ({ws_str} to {we_str}) "
                     f"| {len(week_alarms)} event{'s' if len(week_alarms) != 1 else ''}"
@@ -313,7 +449,7 @@ class WeeklyReporter:
                     else:
                         user_alarms = week_alarms
                         
-                    html_body = build_html_report(user_alarms, ws_str, we_str)
+                    html_body = build_html_report(user_alarms, ws_str, we_str, cities)
                     subject = (
                         f"🌊 FloodWatch AI — Weekly Report ({ws_str} to {we_str}) "
                         f"| {len(user_alarms)} event{'s' if len(user_alarms) != 1 else ''}"
@@ -324,7 +460,7 @@ class WeeklyReporter:
                     else:
                         failed.append({'email': addr, 'error': res.get('error', 'Unknown Brevo error')})
             else:
-                html_body = build_html_report(week_alarms, ws_str, we_str)
+                html_body = build_html_report(week_alarms, ws_str, we_str, None)
                 subject = (
                     f"🌊 FloodWatch AI — Weekly Report ({ws_str} to {we_str}) "
                     f"| {len(week_alarms)} event{'s' if len(week_alarms) != 1 else ''}"
@@ -360,7 +496,7 @@ class WeeklyReporter:
                     else:
                         user_alarms = week_alarms
                         
-                    html_body = build_html_report(user_alarms, ws_str, we_str)
+                    html_body = build_html_report(user_alarms, ws_str, we_str, cities)
                     subject = (
                         f"🌊 FloodWatch AI — Weekly Report ({ws_str} to {we_str}) "
                         f"| {len(user_alarms)} event{'s' if len(user_alarms) != 1 else ''}"
@@ -371,7 +507,7 @@ class WeeklyReporter:
                     else:
                         failed.append({'email': addr, 'error': res.get('error', 'Unknown Resend error')})
             else:
-                html_body = build_html_report(week_alarms, ws_str, we_str)
+                html_body = build_html_report(week_alarms, ws_str, we_str, None)
                 subject = (
                     f"🌊 FloodWatch AI — Weekly Report ({ws_str} to {we_str}) "
                     f"| {len(week_alarms)} event{'s' if len(week_alarms) != 1 else ''}"
@@ -392,7 +528,7 @@ class WeeklyReporter:
 
         if not self.sender_email or not self.sender_password:
             logger.warning("EMAIL_SENDER / EMAIL_PASSWORD not set; skipping actual send.")
-            html_body = build_html_report(week_alarms, ws_str, we_str)
+            html_body = build_html_report(week_alarms, ws_str, we_str, None)
             recipients = [s['email'] for s in subscribers] if subscribers else self.fallback_recipients
             return {
                 'status': 'skipped',
@@ -422,7 +558,7 @@ class WeeklyReporter:
                         else:
                             user_alarms = week_alarms
                             
-                        html_body = build_html_report(user_alarms, ws_str, we_str)
+                        html_body = build_html_report(user_alarms, ws_str, we_str, cities)
                         subject = (
                             f"🌊 FloodWatch AI — Weekly Report ({ws_str} to {we_str}) "
                             f"| {len(user_alarms)} event{'s' if len(user_alarms) != 1 else ''}"
@@ -441,7 +577,7 @@ class WeeklyReporter:
                             failed.append({'email': addr, 'error': str(e)})
                             logger.error(f"Failed to send to {addr}: {e}")
                 else:
-                    html_body = build_html_report(week_alarms, ws_str, we_str)
+                    html_body = build_html_report(week_alarms, ws_str, we_str, None)
                     subject = (
                         f"🌊 FloodWatch AI — Weekly Report ({ws_str} to {we_str}) "
                         f"| {len(week_alarms)} event{'s' if len(week_alarms) != 1 else ''}"
@@ -485,6 +621,7 @@ class WeeklyReporter:
             week_alarms,
             week_start.strftime('%d %b %Y'),
             week_end.strftime('%d %b %Y'),
+            None
         )
 
     def send_welcome_email(self, email: str, name: str = '', cities: list = None) -> dict:
@@ -599,7 +736,7 @@ class WeeklyReporter:
         else:
             user_alarms = week_alarms
 
-        html_body = build_html_report(user_alarms, ws_str, we_str)
+        html_body = build_html_report(user_alarms, ws_str, we_str, cities)
         subject = (
             f"🌊 FloodWatch AI — Initial Flood Report ({ws_str} to {we_str}) "
             f"| {len(user_alarms)} event{'s' if len(user_alarms) != 1 else ''}"
