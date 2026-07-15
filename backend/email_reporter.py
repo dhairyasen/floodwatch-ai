@@ -222,8 +222,8 @@ class WeeklyReporter:
 
     def send_weekly_report(self) -> dict:
         """
-        Gather last 7 days of alarms, build the HTML report,
-        and send to all subscribers.  Returns a status dict.
+        Gather last 7 days of alarms, build custom HTML reports filtered by
+        subscriber city choices, and send them. Returns a status dict.
         """
         week_end = datetime.now()
         week_start = week_end - timedelta(days=7)
@@ -237,19 +237,16 @@ class WeeklyReporter:
             if a.get('timestamp', '') >= week_start.isoformat()
         ]
 
-        html_body = build_html_report(week_alarms, ws_str, we_str)
-        subject = (
-            f"🌊 FloodWatch AI — Weekly Report ({ws_str} to {we_str}) "
-            f"| {len(week_alarms)} event{'s' if len(week_alarms) != 1 else ''}"
-        )
-
-        recipients = self._get_recipients()
-        if not recipients:
+        subscribers = self.alarm_system.get_subscribers()
+        
+        if not subscribers and not self.fallback_recipients:
             logger.warning("No recipients configured for weekly report.")
             return {'status': 'skipped', 'reason': 'no recipients', 'events': len(week_alarms)}
 
         if not self.sender_email or not self.sender_password:
             logger.warning("EMAIL_SENDER / EMAIL_PASSWORD not set; skipping actual send.")
+            html_body = build_html_report(week_alarms, ws_str, we_str)
+            recipients = [s['email'] for s in subscribers] if subscribers else self.fallback_recipients
             return {
                 'status': 'skipped',
                 'reason': 'email credentials not configured',
@@ -263,19 +260,59 @@ class WeeklyReporter:
         try:
             with smtplib.SMTP_SSL('smtp.gmail.com', 465) as server:
                 server.login(self.sender_email, self.sender_password)
-                for addr in recipients:
-                    try:
-                        msg = MIMEMultipart('alternative')
-                        msg['Subject'] = subject
-                        msg['From'] = f"FloodWatch AI <{self.sender_email}>"
-                        msg['To'] = addr
-                        msg.attach(MIMEText(html_body, 'html'))
-                        server.sendmail(self.sender_email, addr, msg.as_string())
-                        sent.append(addr)
-                        logger.info(f"Report sent to {addr}")
-                    except Exception as e:
-                        failed.append({'email': addr, 'error': str(e)})
-                        logger.error(f"Failed to send to {addr}: {e}")
+                
+                if subscribers:
+                    for sub in subscribers:
+                        addr = sub['email']
+                        cities = sub.get('cities', [])
+                        
+                        # Filter alarms by subscriber's selected cities
+                        if cities and "all" not in [c.lower() for c in cities]:
+                            user_alarms = [
+                                a for a in week_alarms
+                                if any(c.lower() in a.get('location_name', '').lower() for c in cities)
+                            ]
+                        else:
+                            user_alarms = week_alarms
+                            
+                        html_body = build_html_report(user_alarms, ws_str, we_str)
+                        subject = (
+                            f"🌊 FloodWatch AI — Weekly Report ({ws_str} to {we_str}) "
+                            f"| {len(user_alarms)} event{'s' if len(user_alarms) != 1 else ''}"
+                        )
+                        
+                        try:
+                            msg = MIMEMultipart('alternative')
+                            msg['Subject'] = subject
+                            msg['From'] = f"FloodWatch AI <{self.sender_email}>"
+                            msg['To'] = addr
+                            msg.attach(MIMEText(html_body, 'html'))
+                            server.sendmail(self.sender_email, addr, msg.as_string())
+                            sent.append(addr)
+                            logger.info(f"Report sent to {addr} (filtered for cities: {cities})")
+                        except Exception as e:
+                            failed.append({'email': addr, 'error': str(e)})
+                            logger.error(f"Failed to send to {addr}: {e}")
+                else:
+                    html_body = build_html_report(week_alarms, ws_str, we_str)
+                    subject = (
+                        f"🌊 FloodWatch AI — Weekly Report ({ws_str} to {we_str}) "
+                        f"| {len(week_alarms)} event{'s' if len(week_alarms) != 1 else ''}"
+                    )
+                    for addr in self.fallback_recipients:
+                        try:
+                            msg = MIMEMultipart('alternative')
+                            msg['Subject'] = subject
+                            msg['From'] = f"FloodWatch AI <{self.sender_email}>"
+                            msg['To'] = addr
+                            msg.attach(MIMEText(html_body, 'html'))
+                            server.sendmail(self.sender_email, addr, msg.as_string())
+                            sent.append(addr)
+                            logger.info(f"Report sent to fallback {addr}")
+                        except Exception as e:
+                            failed.append({'email': addr, 'error': str(e)})
+                            logger.error(f"Failed to send to fallback {addr}: {e}")
+                            
         except Exception as smtp_err:
             logger.error(f"SMTP connection failed: {smtp_err}")
             return {'status': 'error', 'error': str(smtp_err)}
@@ -302,3 +339,77 @@ class WeeklyReporter:
             week_start.strftime('%d %b %Y'),
             week_end.strftime('%d %b %Y'),
         )
+
+    def send_welcome_email(self, email: str, name: str = '', cities: list = None) -> dict:
+        """Send a confirmation welcome email immediately to the subscriber."""
+        if not self.sender_email or not self.sender_password:
+            logger.warning("EMAIL_SENDER / EMAIL_PASSWORD not set; skipping welcome email.")
+            return {'status': 'skipped', 'reason': 'email credentials not configured'}
+            
+        cities_str = ", ".join(cities) if cities else "All monitored cities"
+        subject = "🌊 Welcome to FloodWatch AI Alerts!"
+        
+        html = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Welcome to FloodWatch AI</title>
+</head>
+<body style="margin:0; padding:0; background:#f0f4f8; font-family:'Segoe UI',Arial,sans-serif;">
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#f0f4f8; padding:32px 0;">
+<tr><td align="center">
+<table width="600" cellpadding="0" cellspacing="0"
+       style="background:#ffffff; border-radius:16px; overflow:hidden;
+              box-shadow:0 8px 24px rgba(0,0,0,0.12); max-width:600px; width:100%;">
+  <tr>
+    <td style="background:linear-gradient(135deg,#0052a3,#00b3b3);
+               padding:36px 40px; text-align:center;">
+      <div style="font-size:36px; margin-bottom:6px;">🌊</div>
+      <h1 style="color:#ffffff; margin:0; font-size:26px; font-weight:700;
+                 letter-spacing:-0.5px;">Subscription Confirmed</h1>
+    </td>
+  </tr>
+  <tr>
+    <td style="padding:40px; color:#1e293b; font-size:15px; line-height:1.6;">
+      <p style="margin:0 0 16px;">Hello {name or 'there'},</p>
+      <p style="margin:0 0 16px;">
+        Thank you for subscribing to **FloodWatch AI**. Your subscription has been successfully confirmed.
+      </p>
+      <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:20px; margin:24px 0;">
+        <h4 style="margin:0 0 10px; color:#0052a3; font-size:16px;">Subscription Details:</h4>
+        <p style="margin:0 0 8px;"><b>Email:</b> {email}</p>
+        <p style="margin:0;"><b>Monitored Cities:</b> {cities_str}</p>
+      </div>
+      <p style="margin:0 0 16px;">
+        You will receive a weekly digest every **Monday at 08:00 IST** containing water coverage analyses and flood detection logs for your chosen cities.
+      </p>
+      <p style="margin:0 0 24px;">
+        If you wish to update your monitored cities or unsubscribe, you can do so at any time through the dashboard.
+      </p>
+      <hr style="border:none; border-top:1px solid #e2e8f0; margin:0 0 20px;">
+      <p style="margin:0; font-size:12px; color:#94a3b8; text-align:center;">
+        FloodWatch AI — India Flood Monitoring System
+      </p>
+    </td>
+  </tr>
+</table>
+</td></tr>
+</table>
+</body>
+</html>"""
+
+        try:
+            with smtplib.SMTP_SSL('smtp.gmail.com', 465) as server:
+                server.login(self.sender_email, self.sender_password)
+                msg = MIMEMultipart('alternative')
+                msg['Subject'] = subject
+                msg['From'] = f"FloodWatch AI <{self.sender_email}>"
+                msg['To'] = email
+                msg.attach(MIMEText(html, 'html'))
+                server.sendmail(self.sender_email, email, msg.as_string())
+                logger.info(f"Welcome email sent successfully to {email}")
+                return {'status': 'sent', 'email': email}
+        except Exception as e:
+            logger.error(f"Failed to send welcome email to {email}: {e}")
+            return {'status': 'error', 'error': str(e)}
