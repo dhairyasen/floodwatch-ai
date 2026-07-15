@@ -306,12 +306,27 @@
             </div>
 
             <div class="form-group" style="margin-top:8px;">
-                <label><i class="fas fa-map-marker-alt"></i> Cities to Monitor (optional)</label>
+                <label><i class="fas fa-map-marker-alt"></i> Cities to Monitor</label>
                 <div class="input-with-icon">
                     <i class="fas fa-city"></i>
-                    <input type="text" id="subCities" placeholder="e.g. Mumbai, Chennai, Delhi">
+                    <select id="subCities" style="width: 100%; padding: 18px 20px 18px 50px; border: 2px solid var(--gray-light); border-radius: 12px; font-size: 1rem; transition: var(--transition); background: var(--white); color: var(--dark); cursor: pointer; appearance: none; -webkit-appearance: none;">
+                        <option value="">Select a City (or leave empty for All Cities)</option>
+                        <option value="All">All Cities</option>
+                        <option value="Mumbai">Mumbai</option>
+                        <option value="Delhi">Delhi</option>
+                        <option value="Bangalore">Bangalore</option>
+                        <option value="Hyderabad">Hyderabad</option>
+                        <option value="Chennai">Chennai</option>
+                        <option value="Kolkata">Kolkata</option>
+                        <option value="Indore">Indore</option>
+                        <option value="Bhopal">Bhopal</option>
+                        <option value="Kochi">Kochi</option>
+                        <option value="Mangalore">Mangalore</option>
+                        <option value="Puducherry">Puducherry</option>
+                    </select>
+                    <i class="fas fa-chevron-down" style="position: absolute; right: 20px; left: auto; top: 50%; transform: translateY(-50%); pointer-events: none; color: var(--gray);"></i>
                 </div>
-                <span class="field-hint">Comma-separated city names</span>
+                <span class="field-hint">Select the specific city you wish to monitor</span>
             </div>
 
             <div class="subscribe-actions">
