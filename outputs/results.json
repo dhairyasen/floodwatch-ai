@@ -1,17 +1,17 @@
 {
-  "location": "Indore, Madhya Pradesh, India",
-  "location_name": "Indore, Madhya Pradesh, India",
+  "location": "Mumbai",
+  "location_name": "Mumbai, India",
   "coordinates": {
-    "lat": 22.7108119,
-    "lon": 75.8076918
+    "lat": 19.076,
+    "lon": 72.8777
   },
-  "start_date": "2026-02-21",
-  "end_date": "2026-03-31",
+  "start_date": "10-07-2026",
+  "end_date": "15-07-2026",
   "study_area": 10000.0,
-  "water_before": 26.31,
-  "water_after": 8.56,
-  "new_flooded_area": 0.0,
-  "water_coverage_change": 0.0,
-  "image_count": 59,
-  "timestamp": "2026-05-08T12:01:25.215636"
+  "water_before": 12.0,
+  "water_after": 22.0,
+  "new_flooded_area": 10.0,
+  "water_coverage_change": 83.3,
+  "image_count": 9,
+  "timestamp": "2026-07-15T17:35:14.494951"
 }

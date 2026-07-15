@@ -364,11 +364,11 @@ class FloodAnalyzer:
             # Save map
             print("  - Saving map...")
             m.save(map_path)
-            print("  ✓ Map created successfully!")
+            print("  [OK] Map created successfully!")
             return map_path
             
         except Exception as e:
-            print(f"  ERROR creating map: {str(e)}")
+            print(f"  [ERROR] ERROR creating map: {str(e)}")
             import traceback
             traceback.print_exc()
             
@@ -405,10 +405,10 @@ class FloodAnalyzer:
                 m.get_root().html.add_child(folium.Element(warning_html))
                 
                 m.save(map_path)
-                print("  ✓ Fallback map created")
+                print("  [OK] Fallback map created")
                 return map_path
             except:
-                print("  ✗ All map creation methods failed")
+                print("  [ERROR] All map creation methods failed")
                 return None
     
     def create_visualizations(self, results):
@@ -493,13 +493,13 @@ class FloodAnalyzer:
         fig, ax = plt.subplots(figsize=(10, 7))
         ax.axis('off')
         
-        if new_flood > 100:
+        if new_flood >= 100.0:
             severity = "CRITICAL"
-        elif new_flood > 50:
+        elif new_flood >= 50.0:
             severity = "HIGH"
-        elif new_flood > 10:
+        elif new_flood >= 10.0:
             severity = "MEDIUM"
-        elif new_flood > 1.0:
+        elif new_flood >= 1.0:
             severity = "LOW"
         elif change_pct < -5:
             severity = "WATER RECEDED"
@@ -549,7 +549,7 @@ Generated: {results['timestamp'][:10]}
             study_area = (BUFFER_DISTANCE * 2 / 1000) ** 2
             
             print(f"Location: {lat} N, {lon} E")
-            print(f"Study area: {study_area:.1f} km²\n")
+            print(f"Study area: {study_area:.1f} km2\n")
             
             print(f"Fetching baseline ({before_start_date} to {before_end_date})...")
             image_before, roi, count_before = self.fetch_satellite_data(lat, lon, before_start_date, before_end_date)
@@ -585,13 +585,13 @@ Generated: {results['timestamp'][:10]}
             water_after_area = self.calculate_area(water_after_land, roi)
             new_flooded_area_actual = self.calculate_area(new_flood_layer, roi)
             
-            print(f"   Before: {water_before_area:.2f} km²")
-            print(f"   After: {water_after_area:.2f} km²")
-            print(f"   NEW FLOODED (actual): {new_flooded_area_actual:.2f} km²")
+            print(f"   Before: {water_before_area:.2f} km2")
+            print(f"   After: {water_after_area:.2f} km2")
+            print(f"   NEW FLOODED (actual): {new_flooded_area_actual:.2f} km2")
             
             # FALLBACK: If actual calculation returns 0 but water increased, use simple math
             if new_flooded_area_actual < 0.01 and water_after_area > water_before_area:
-                print(f"   WARNING: Layer calculation returned 0, using simple subtraction")
+                print(f"   [WARNING] Layer calculation returned 0, using simple subtraction")
                 new_flooded_area = max(0, water_after_area - water_before_area)
             else:
                 new_flooded_area = new_flooded_area_actual
@@ -599,7 +599,7 @@ Generated: {results['timestamp'][:10]}
             water_coverage_change = ((new_flooded_area) / water_before_area * 100) if water_before_area > 0 else 0
             
             print(f"\n{'='*60}")
-            print(f"RESULT: {new_flooded_area:.2f} km² new flooding")
+            print(f"RESULT: {new_flooded_area:.2f} km2 new flooding")
             print(f"Change: {water_coverage_change:+.1f}%")
             print(f"{'='*60}\n")
             

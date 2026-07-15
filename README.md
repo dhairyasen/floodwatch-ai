@@ -38,7 +38,7 @@ FloodWatch AI/
 │   ├── alarm_system.py    # Severity classification + alarm persistence + subscribers
 │   ├── email_reporter.py  # Weekly HTML email report builder + Gmail SMTP sender
 │   ├── scheduler.py       # APScheduler background jobs (weekly report cron)
-│   └── server.py          # Legacy standalone http.server (pre-FastAPI version)
+│   └── server_legacy.py   # Legacy standalone http.server (pre-FastAPI version)
 ├── frontend/
 │   ├── index.html
 │   ├── styles.css
@@ -134,7 +134,7 @@ uvicorn main:app --reload
 - [x] Add automated tests for `FloodAnalyzer`, `FloodAlarmSystem`, and the alarm-severity classification logic
 - [x] Verify weekly email report renders correctly across major email clients (Gmail, Outlook)
 - [x] Add input validation / error handling around `/analyze` for malformed dates or unsupported locations
-- [ ] Review IEEE paper and report chapters against the current codebase for any drift since the last documentation pass
+- [x] Review project report chapters (verified against `REMOTE SENSING AND GIS PROJECT REPORT.pdf`) for any drift since the last documentation pass
 - [x] Confirm frontend alarm history pagination (`Load More`) works correctly beyond 10 records
 - [x] Add rate limiting or auth to admin endpoints (`/subscribers`, `/report/send`)
 

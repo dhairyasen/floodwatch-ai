@@ -17,7 +17,7 @@
             <meta name="viewport" content="width=device-width,
                 initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
             <style>
-                #map_8492a178ec0ce924e0f0470a9c780a59 {
+                #map_8c5796f789317a8df8d97d68381f7d94 {
                     position: relative;
                     width: 100.0%;
                     height: 100.0%;
@@ -50,122 +50,53 @@
             </script>
 
         
-    <script src="https://cdn.jsdelivr.net/npm/leaflet.fullscreen@3.0.0/Control.FullScreen.min.js"></script>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet.fullscreen@3.0.0/Control.FullScreen.css"/>
-    <script src="https://cdn.jsdelivr.net/gh/ljagis/leaflet-measure@2.1.7/dist/leaflet-measure.min.js"></script>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/ljagis/leaflet-measure@2.1.7/dist/leaflet-measure.min.css"/>
 </head>
 <body>
     
     
-            <div style="position: fixed; 
-                        bottom: 50px; right: 50px; 
-                        width: 220px; 
-                        background: white; 
-                        z-index: 1000;
-                        border: 2px solid #0066cc;
-                        border-radius: 8px;
-                        padding: 15px;
-                        box-shadow: 0 4px 8px rgba(0,0,0,0.2);
-                        font-family: Arial, sans-serif;">
-                <h4 style="margin: 0 0 12px 0; 
-                           color: #1e293b; 
-                           font-size: 16px;
-                           border-bottom: 2px solid #e2e8f0;
-                           padding-bottom: 8px;">
-                     Flood Detection Layers
-                </h4>
-                <div style="margin: 10px 0;">
-                    <div style="display: flex; align-items: center; margin: 10px 0;">
-                        <div style="width: 24px; 
-                                    height: 24px; 
-                                    background: #00FFFF; 
-                                    border-radius: 3px;
-                                    margin-right: 10px;
-                                    opacity: 0.6;
-                                    border: 1px solid #00CCCC;"></div>
-                        <div>
-                            <div style="font-size: 13px; font-weight: 600;">Water Before</div>
-                            <div style="font-size: 10px; color: #64748b;">Baseline water</div>
-                        </div>
-                    </div>
-                    <div style="display: flex; align-items: center; margin: 10px 0;">
-                        <div style="width: 24px; 
-                                    height: 24px; 
-                                    background: #FF0000; 
-                                    border-radius: 3px;
-                                    margin-right: 10px;
-                                    opacity: 0.7;
-                                    border: 1px solid #CC0000;"></div>
-                        <div>
-                            <div style="font-size: 13px; font-weight: 600;">New Flooded</div>
-                            <div style="font-size: 10px; color: #64748b;">Newly flooded areas</div>
-                        </div>
-                    </div>
-                    <div style="display: flex; align-items: center; margin: 10px 0;">
-                        <div style="width: 24px; 
-                                    height: 24px; 
-                                    background: #FFFF00; 
-                                    border-radius: 3px;
-                                    margin-right: 10px;
-                                    opacity: 0.65;
-                                    border: 1px solid #CCCC00;"></div>
-                        <div>
-                            <div style="font-size: 13px; font-weight: 600;">Area Difference</div>
-                            <div style="font-size: 10px; color: #64748b;">All water changes</div>
-                        </div>
-                    </div>
-                    <div style="display: flex; align-items: center; margin: 10px 0;">
-                        <div style="width: 24px; 
-                                    height: 24px; 
-                                    background: #0066cc; 
-                                    border: 2px solid #0066cc;
-                                    border-radius: 50%;
-                                    margin-right: 10px;"></div>
-                        <div>
-                            <div style="font-size: 13px;">Analysis Center</div>
-                        </div>
-                    </div>
+                <div style="position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+                            background: white; padding: 30px; border-radius: 12px;
+                            box-shadow: 0 8px 16px rgba(0,0,0,0.2); z-index: 2000;
+                            text-align: center; max-width: 400px;">
+                    <h2 style="color: #ef4444; margin: 0 0 15px 0;">⚠️ Map Unavailable</h2>
+                    <p style="color: #64748b; margin: 0 0 20px 0;">
+                        The detailed flood map could not be generated.<br>
+                        Please refer to the charts and statistics below for analysis results.
+                    </p>
+                    <button onclick="this.parentElement.style.display='none'" 
+                            style="background: #3b82f6; color: white; border: none;
+                                   padding: 10px 24px; border-radius: 6px; cursor: pointer;
+                                   font-size: 14px; font-weight: 600;">
+                        View Results Below
+                    </button>
                 </div>
-                <hr style="margin: 12px 0; border: none; border-top: 1px solid #e2e8f0;">
-                <p style="margin: 8px 0 0 0; 
-                          font-size: 10px; 
-                          color: #64748b;
-                          line-height: 1.5;">
-                    📍 Indore, Madhya Pradesh, India<br>
-                    🛰️ Sentinel-2 (10m resolution)<br>
-                    ⚡ Excludes permanent water<br>
-                    💡 Toggle layers using top-right controls
-                </p>
-            </div>
-            
+                
     
-            <div class="folium-map" id="map_8492a178ec0ce924e0f0470a9c780a59" ></div>
+            <div class="folium-map" id="map_8c5796f789317a8df8d97d68381f7d94" ></div>
         
 </body>
 <script>
     
     
-            var map_8492a178ec0ce924e0f0470a9c780a59 = L.map(
-                "map_8492a178ec0ce924e0f0470a9c780a59",
+            var map_8c5796f789317a8df8d97d68381f7d94 = L.map(
+                "map_8c5796f789317a8df8d97d68381f7d94",
                 {
-                    center: [22.7108119, 75.8076918],
+                    center: [19.076, 72.8777],
                     crs: L.CRS.EPSG3857,
                     ...{
-  "zoom": 11,
+  "zoom": 10,
   "zoomControl": true,
   "preferCanvas": false,
 }
 
                 }
             );
-            L.control.scale().addTo(map_8492a178ec0ce924e0f0470a9c780a59);
 
             
 
         
     
-            var tile_layer_94f69c9fe8669f4a353aaa84e35baa04 = L.tileLayer(
+            var tile_layer_8a1a0834b3ea723886cf8ba1df1ecd47 = L.tileLayer(
                 "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
                 {
   "minZoom": 0,
@@ -182,191 +113,45 @@
             );
         
     
-            tile_layer_94f69c9fe8669f4a353aaa84e35baa04.addTo(map_8492a178ec0ce924e0f0470a9c780a59);
+            tile_layer_8a1a0834b3ea723886cf8ba1df1ecd47.addTo(map_8c5796f789317a8df8d97d68381f7d94);
         
     
-            var tile_layer_1803d099249638930292bc5c52a3242a = L.tileLayer(
-                "https://earthengine.googleapis.com/v1/projects/flood-analysis-478517/maps/3156d6204e7ba462f83232ddc6a5d264-ae0d5a3dfc202d07ec0d8368e1fb151c/tiles/{z}/{x}/{y}",
-                {
-  "minZoom": 0,
-  "maxZoom": 18,
-  "maxNativeZoom": 18,
-  "noWrap": false,
-  "attribution": "Google Earth Engine",
-  "subdomains": "abc",
-  "detectRetina": false,
-  "tms": false,
-  "opacity": 0.85,
-}
-
-            );
-        
-    
-            var tile_layer_9cfadb27028e8371705a942f67409d26 = L.tileLayer(
-                "https://earthengine.googleapis.com/v1/projects/flood-analysis-478517/maps/ebfd0c0497b82b18c9e4ff9e833fe0e8-5762c763f1f1766b3149d5b8677d171f/tiles/{z}/{x}/{y}",
-                {
-  "minZoom": 0,
-  "maxZoom": 18,
-  "maxNativeZoom": 18,
-  "noWrap": false,
-  "attribution": "Google Earth Engine",
-  "subdomains": "abc",
-  "detectRetina": false,
-  "tms": false,
-  "opacity": 0.9,
-}
-
-            );
-        
-    
-            tile_layer_9cfadb27028e8371705a942f67409d26.addTo(map_8492a178ec0ce924e0f0470a9c780a59);
-        
-    
-            var tile_layer_b6643428bc657416e2e5fc87f47a2a7f = L.tileLayer(
-                "https://earthengine.googleapis.com/v1/projects/flood-analysis-478517/maps/efd80110c9ee72d403b0d27b7435dace-e8b3edad63e555a714fc91f91016e16f/tiles/{z}/{x}/{y}",
-                {
-  "minZoom": 0,
-  "maxZoom": 18,
-  "maxNativeZoom": 18,
-  "noWrap": false,
-  "attribution": "Google Earth Engine",
-  "subdomains": "abc",
-  "detectRetina": false,
-  "tms": false,
-  "opacity": 0.85,
-}
-
-            );
-        
-    
-            var marker_e28e75384d64edd9357277d8cf2aa09b = L.marker(
-                [22.7108119, 75.8076918],
+            var marker_7054e13e39d7c0fee9ce42ab373fe598 = L.marker(
+                [19.076, 72.8777],
                 {
 }
-            ).addTo(map_8492a178ec0ce924e0f0470a9c780a59);
+            ).addTo(map_8c5796f789317a8df8d97d68381f7d94);
         
     
-            var icon_d4812000036e527340dfdc73ad7ffec6 = L.AwesomeMarkers.icon(
+            var icon_c9cacd683cb7169a192f0489648e4aa5 = L.AwesomeMarkers.icon(
                 {
-  "markerColor": "blue",
+  "markerColor": "red",
   "iconColor": "white",
-  "icon": "water",
+  "icon": "warning",
   "prefix": "fa",
   "extraClasses": "fa-rotate-0",
 }
             );
         
     
-        var popup_e05f5ba98bbe6753a364a097ded3511f = L.popup({
-  "maxWidth": 200,
-});
-
-        
-            
-                var html_0132d2f1c39042991e8ed1761c89add5 = $(`<div id="html_0132d2f1c39042991e8ed1761c89add5" style="width: 100.0%; height: 100.0%;"><b>Indore, Madhya Pradesh, India</b><br>Flood Analysis Center</div>`)[0];
-                popup_e05f5ba98bbe6753a364a097ded3511f.setContent(html_0132d2f1c39042991e8ed1761c89add5);
-            
-        
-
-        marker_e28e75384d64edd9357277d8cf2aa09b.bindPopup(popup_e05f5ba98bbe6753a364a097ded3511f)
-        ;
-
-        
-    
-    
-            marker_e28e75384d64edd9357277d8cf2aa09b.bindTooltip(
-                `<div>
-                     Analysis Center
-                 </div>`,
-                {
-  "sticky": true,
-}
-            );
-        
-    
-                marker_e28e75384d64edd9357277d8cf2aa09b.setIcon(icon_d4812000036e527340dfdc73ad7ffec6);
-            
-    
-            var circle_e04eddb84536b0a3f365692ee2cadc17 = L.circle(
-                [22.7108119, 75.8076918],
-                {"bubblingMouseEvents": true, "color": "blue", "dashArray": null, "dashOffset": null, "fill": false, "fillColor": "blue", "fillOpacity": 0.2, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 0.5, "radius": 50000, "stroke": true, "weight": 2}
-            ).addTo(map_8492a178ec0ce924e0f0470a9c780a59);
-        
-    
-        var popup_587e9faa4b1ec1b5878bcb819a57c2f6 = L.popup({
+        var popup_bfd3e237b2afcceae8de1a634f8473f8 = L.popup({
   "maxWidth": "100%",
 });
 
         
             
-                var html_8e0ad884b9de59250c38f617f4d0bab8 = $(`<div id="html_8e0ad884b9de59250c38f617f4d0bab8" style="width: 100.0%; height: 100.0%;">Analysis Area (50km radius)</div>`)[0];
-                popup_587e9faa4b1ec1b5878bcb819a57c2f6.setContent(html_8e0ad884b9de59250c38f617f4d0bab8);
+                var html_b655422065a9ca7c3dd95970001eb183 = $(`<div id="html_b655422065a9ca7c3dd95970001eb183" style="width: 100.0%; height: 100.0%;"><b>19.076, 72.8777</b><br>Flood Analysis<br>See charts for results</div>`)[0];
+                popup_bfd3e237b2afcceae8de1a634f8473f8.setContent(html_b655422065a9ca7c3dd95970001eb183);
             
         
 
-        circle_e04eddb84536b0a3f365692ee2cadc17.bindPopup(popup_587e9faa4b1ec1b5878bcb819a57c2f6)
+        marker_7054e13e39d7c0fee9ce42ab373fe598.bindPopup(popup_bfd3e237b2afcceae8de1a634f8473f8)
         ;
 
         
     
     
-            L.control.fullscreen(
-                {
-  "position": "topright",
-  "title": "Fullscreen",
-  "titleCancel": "Exit Fullscreen",
-  "forceSeparateButton": true,
-}
-            ).addTo(map_8492a178ec0ce924e0f0470a9c780a59);
-        
-    
-            var measure_control_c6d4d4676bc26240ade9269b8e14616d = new L.Control.Measure(
-                {
-  "position": "topleft",
-  "primaryLengthUnit": "kilometers",
-  "secondaryLengthUnit": "meters",
-  "primaryAreaUnit": "sqkilometers",
-  "secondaryAreaUnit": "acres",
-});
-            map_8492a178ec0ce924e0f0470a9c780a59.addControl(measure_control_c6d4d4676bc26240ade9269b8e14616d);
-
-            // Workaround for using this plugin with Leaflet>=1.8.0
-            // https://github.com/ljagis/leaflet-measure/issues/171
-            L.Control.Measure.include({
-                _setCaptureMarkerIcon: function () {
-                    // disable autopan
-                    this._captureMarker.options.autoPanOnFocus = false;
-                    // default function
-                    this._captureMarker.setIcon(
-                        L.divIcon({
-                            iconSize: this._map.getSize().multiplyBy(2)
-                        })
-                    );
-                },
-            });
-
-        
-    
-            var layer_control_41b8624d8dd8ce4a467b89e845930b9d_layers = {
-                base_layers : {
-                    "openstreetmap" : tile_layer_94f69c9fe8669f4a353aaa84e35baa04,
-                },
-                overlays :  {
-                    "Water Before (CYAN)" : tile_layer_1803d099249638930292bc5c52a3242a,
-                    "New Flooded Areas (RED)" : tile_layer_9cfadb27028e8371705a942f67409d26,
-                    "Area Difference (YELLOW)" : tile_layer_b6643428bc657416e2e5fc87f47a2a7f,
-                },
-            };
-            let layer_control_41b8624d8dd8ce4a467b89e845930b9d = L.control.layers(
-                layer_control_41b8624d8dd8ce4a467b89e845930b9d_layers.base_layers,
-                layer_control_41b8624d8dd8ce4a467b89e845930b9d_layers.overlays,
-                {
-  "position": "topright",
-  "collapsed": false,
-  "autoZIndex": true,
-}
-            ).addTo(map_8492a178ec0ce924e0f0470a9c780a59);
-
-        
+                marker_7054e13e39d7c0fee9ce42ab373fe598.setIcon(icon_c9cacd683cb7169a192f0489648e4aa5);
+            
 </script>
 </html>
