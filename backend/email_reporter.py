@@ -133,7 +133,7 @@ def _get_weather_forecast_html(cities: list) -> str:
     <td style="padding:24px 40px 0;">
       <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:12px; padding:20px;">
         <p style="margin:0 0 12px; font-size:12px; color:#64748b; font-weight:600;
-                  text-transform:uppercase; letter-spacing:0.5px;">🌦️ 7-Day Rainfall Forecast & Risk Outlook</p>
+                  text-transform:uppercase; letter-spacing:0.5px;">🔮 Next Week Prediction: Rainfall & Flood Risk</p>
         <table width="100%" cellpadding="0" cellspacing="0" style="font-size:13px; border-collapse:collapse;">
           <thead>
             <tr style="border-bottom:2px solid #e2e8f0;">
@@ -157,6 +157,16 @@ def _get_weather_forecast_html(cities: list) -> str:
 # ------------------------------------------------------------------ #
 def build_html_report(alarm_history: list, week_start: str, week_end: str, cities: list = None) -> str:
     """Render a full HTML email from a list of alarm dicts."""
+    # Format cities string for header
+    if cities:
+        cleaned_cities = [str(c).strip().title() for c in cities if str(c).lower() != 'all']
+        if cleaned_cities:
+            cities_str = ", ".join(cleaned_cities)
+        else:
+            cities_str = "All Monitored Cities"
+    else:
+        cities_str = "All Monitored Cities"
+
     try:
         weather_block = _get_weather_forecast_html(cities)
     except Exception as e:
@@ -273,6 +283,9 @@ def build_html_report(alarm_history: list, week_start: str, week_end: str, citie
       </p>
       <p style="color:#e0f2ff; margin:8px 0 0; font-size:12px;">
         {week_start} &nbsp;→&nbsp; {week_end}
+      </p>
+      <p style="color:#ffffff; margin:8px 0 0; font-size:13px; font-weight:600;">
+        📍 Monitored: {cities_str}
       </p>
     </td>
   </tr>
