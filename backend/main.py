@@ -244,12 +244,20 @@ async def alarm_history(limit: int = 20):
 # ---------------------------------------------------------------------- #
 # Phase 2 — Subscriber Routes
 # ---------------------------------------------------------------------- #
+def send_subscription_emails_task(email: str, name: str, cities: list):
+    try:
+        welcome_res = reporter.send_welcome_email(email, name, cities)
+        report_res = reporter.send_personalized_report_to_email(email, name, cities)
+        print(f"[BG TASK] Subscription emails result for {email}: welcome={welcome_res}, report={report_res}")
+    except Exception as e:
+        print(f"[BG TASK ERROR] Failed to send subscription emails for {email}: {e}")
+
+
 @app.post("/subscribe")
 async def subscribe(req: SubscribeRequest, background_tasks: BackgroundTasks):
     result = alarm_system.subscribe(req.email, req.name, req.cities)
     if result.get('status') in ('subscribed', 'updated'):
-        background_tasks.add_task(reporter.send_welcome_email, req.email, req.name, req.cities)
-        background_tasks.add_task(reporter.send_personalized_report_to_email, req.email, req.name, req.cities)
+        background_tasks.add_task(send_subscription_emails_task, req.email, req.name, req.cities)
     result["email_status"] = {"status": "queued"}
     return JSONResponse(content=result)
 
