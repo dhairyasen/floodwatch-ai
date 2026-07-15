@@ -317,7 +317,7 @@ def build_html_report(alarm_history: list, week_start: str, week_end: str, citie
       <p style="margin:0; font-size:12px; color:#94a3b8; text-align:center; line-height:1.8;">
         🛰️ Data source: Sentinel-2 (10m resolution) via Google Earth Engine<br>
         📍 FloodWatch AI — India Flood Monitoring System<br>
-        Generated automatically on {datetime.now().strftime('%d %b %Y at %H:%M IST')}
+        Generated automatically on {(datetime.utcnow() + timedelta(hours=5, minutes=30)).strftime('%d %b %Y at %H:%M IST')}
       </p>
       <p style="margin:12px 0 0; font-size:11px; color:#cbd5e1; text-align:center;">
         To unsubscribe, visit your FloodWatch AI dashboard settings.
