@@ -464,6 +464,7 @@ class FloodAnalyzer:
             ax.set_title('Flood Severity Breakdown', fontsize=14, fontweight='bold', pad=20)
             
         elif change_pct < -5:  # Water DECREASED
+            ax.axis('off')
             ax.text(0.5, 0.5, 
                    f'Water Level DECREASED\n\n'
                    f'Reduction: {abs(change_pct):.0f}%\n\n'
@@ -475,6 +476,7 @@ class FloodAnalyzer:
             ax.set_title('Water Status: Improving', fontsize=14, fontweight='bold', pad=20)
             
         else:  # Minimal change
+            ax.axis('off')
             ax.text(0.5, 0.5, 
                    f'MINIMAL CHANGE\n\n'
                    f'Change: {change_pct:+.1f}%\n\n'
@@ -596,7 +598,7 @@ Generated: {results['timestamp'][:10]}
             else:
                 new_flooded_area = new_flooded_area_actual
             
-            water_coverage_change = ((new_flooded_area) / water_before_area * 100) if water_before_area > 0 else 0
+            water_coverage_change = ((water_after_area - water_before_area) / water_before_area * 100) if water_before_area > 0 else 0
             
             print(f"\n{'='*60}")
             print(f"RESULT: {new_flooded_area:.2f} km2 new flooding")
