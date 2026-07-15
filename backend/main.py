@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, Depends, Security
+from fastapi import FastAPI, HTTPException, Depends, Security, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse, HTMLResponse
 from fastapi.security.api_key import APIKeyHeader
@@ -245,20 +245,12 @@ async def alarm_history(limit: int = 20):
 # Phase 2 — Subscriber Routes
 # ---------------------------------------------------------------------- #
 @app.post("/subscribe")
-async def subscribe(req: SubscribeRequest):
+async def subscribe(req: SubscribeRequest, background_tasks: BackgroundTasks):
     result = alarm_system.subscribe(req.email, req.name, req.cities)
-    email_status = {}
     if result.get('status') in ('subscribed', 'updated'):
-        try:
-            welcome_res = reporter.send_welcome_email(req.email, req.name, req.cities)
-            report_res = reporter.send_personalized_report_to_email(req.email, req.name, req.cities)
-            email_status = {
-                "welcome": welcome_res,
-                "initial_report": report_res
-            }
-        except Exception as e:
-            email_status = {"error": str(e)}
-    result["email_status"] = email_status
+        background_tasks.add_task(reporter.send_welcome_email, req.email, req.name, req.cities)
+        background_tasks.add_task(reporter.send_personalized_report_to_email, req.email, req.name, req.cities)
+    result["email_status"] = {"status": "queued"}
     return JSONResponse(content=result)
 
 
