@@ -250,8 +250,9 @@ async def subscribe(req: SubscribeRequest):
     if result.get('status') in ('subscribed', 'updated'):
         try:
             reporter.send_welcome_email(req.email, req.name, req.cities)
+            reporter.send_personalized_report_to_email(req.email, req.name, req.cities)
         except Exception as e:
-            print(f"[WARNING] Failed to send welcome email to {req.email}: {e}")
+            print(f"[WARNING] Failed to send subscription emails to {req.email}: {e}")
     return JSONResponse(content=result)
 
 

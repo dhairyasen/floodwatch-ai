@@ -413,3 +413,54 @@ class WeeklyReporter:
         except Exception as e:
             logger.error(f"Failed to send welcome email to {email}: {e}")
             return {'status': 'error', 'error': str(e)}
+
+    def send_personalized_report_to_email(self, email: str, name: str = '', cities: list = None) -> dict:
+        """
+        Build and send a weekly-format report containing the last 7 days of alarms
+        specifically filtered for the given cities to a single email address.
+        """
+        if not self.sender_email or not self.sender_password:
+            logger.warning("EMAIL_SENDER / EMAIL_PASSWORD not set; skipping personalized report.")
+            return {'status': 'skipped', 'reason': 'email credentials not configured'}
+
+        week_end = datetime.now()
+        week_start = week_end - timedelta(days=7)
+        ws_str = week_start.strftime('%d %b %Y')
+        we_str = week_end.strftime('%d %b %Y')
+
+        # Filter alarm history to last 7 days
+        all_alarms = self.alarm_system.get_alarm_history(limit=200)
+        week_alarms = [
+            a for a in all_alarms
+            if a.get('timestamp', '') >= week_start.isoformat()
+        ]
+
+        # Filter alarms by selected cities
+        if cities and "all" not in [c.lower() for c in cities]:
+            user_alarms = [
+                a for a in week_alarms
+                if any(c.lower() in a.get('location_name', '').lower() for c in cities)
+            ]
+        else:
+            user_alarms = week_alarms
+
+        html_body = build_html_report(user_alarms, ws_str, we_str)
+        subject = (
+            f"🌊 FloodWatch AI — Initial Flood Report ({ws_str} to {we_str}) "
+            f"| {len(user_alarms)} event{'s' if len(user_alarms) != 1 else ''}"
+        )
+
+        try:
+            with smtplib.SMTP_SSL('smtp.gmail.com', 465) as server:
+                server.login(self.sender_email, self.sender_password)
+                msg = MIMEMultipart('alternative')
+                msg['Subject'] = subject
+                msg['From'] = f"FloodWatch AI <{self.sender_email}>"
+                msg['To'] = email
+                msg.attach(MIMEText(html_body, 'html'))
+                server.sendmail(self.sender_email, email, msg.as_string())
+                logger.info(f"Initial personalized report sent successfully to {email} for cities: {cities}")
+                return {'status': 'sent', 'email': email, 'events': len(user_alarms)}
+        except Exception as e:
+            logger.error(f"Failed to send personalized report to {email}: {e}")
+            return {'status': 'error', 'error': str(e)}
