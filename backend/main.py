@@ -265,6 +265,15 @@ async def subscribe(req: SubscribeRequest, background_tasks: BackgroundTasks):
 @app.get("/debug-email")
 async def debug_email(email: str):
     """Helper endpoint to test and diagnose email sending failures."""
+    weather_debug = ""
+    try:
+        from email_reporter import _get_weather_forecast_html
+        weather_debug = _get_weather_forecast_html(["Chennai"])
+        if not weather_debug:
+            weather_debug = "EMPTY_RESULT"
+    except Exception as e:
+        weather_debug = f"ERROR: {e}"
+
     welcome_res = reporter.send_welcome_email(email, "Debug User", ["Mumbai"])
     report_res = reporter.send_personalized_report_to_email(email, "Debug User", ["Mumbai"])
     return JSONResponse(content={
@@ -274,7 +283,8 @@ async def debug_email(email: str):
         "brevo_api_configured": bool(os.environ.get('BREVO_API_KEY')),
         "gmail_api_configured": bool(os.environ.get('GMAIL_REFRESH_TOKEN')),
         "welcome_status": welcome_res,
-        "report_status": report_res
+        "report_status": report_res,
+        "weather_debug": weather_debug
     })
 
 
